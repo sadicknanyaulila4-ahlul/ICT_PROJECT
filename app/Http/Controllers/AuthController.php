@@ -72,6 +72,7 @@ class AuthController extends Controller
     public function showRegister()
     {
         return \Inertia\Inertia::render('Auth/Register');
+        
     }
 
     public function webRegister(Request $request)
@@ -87,7 +88,11 @@ class AuthController extends Controller
             'name' => $validated['name'],
             'email' => $validated['email'],
             'role' => $validated['role'],
-            'password' => Hash::make($validated['password']),
+            'password' => Hash::make($validated['password']),remote: Resolving deltas: remote: Resolving deltas: 100% (4/4), completed with 1 local object.
+To https://github.com/sadicknanyaulila4-ahlul/ICT_PROJECT.git
+   2f48d51..ddbb07d  main -> main
+branch 'main' set up to track 'origin/main'.
+gibson@gibson-Latitude-3180:~/my-app$ 
         ]);
 
         Auth::login($user);
