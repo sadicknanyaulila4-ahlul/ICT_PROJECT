@@ -1,0 +1,14 @@
+import { Button, Card, Col, Row, Space, Typography } from 'antd';
+import { ApartmentOutlined, AuditOutlined, BankOutlined, FileSearchOutlined, LoginOutlined, UserAddOutlined } from '@ant-design/icons';
+import { Link } from '@inertiajs/react';
+
+const services = [
+    { icon: <ApartmentOutlined />, title: 'Project initiation', text: 'Register projects and capture initial requirements.' },
+    { icon: <AuditOutlined />, title: 'Project planning', text: 'Build implementation plans and approvals.' },
+    { icon: <FileSearchOutlined />, title: 'Project execution', text: 'Track activities, requirements, and UAT.' },
+    { icon: <BankOutlined />, title: 'Project closure', text: 'Complete handover, reports, and attestations.' },
+];
+
+export default function Home() {
+    return <main className="landing-page"><header className="landing-header"><div className="landing-brand"><span className="landing-mark">NS</span><span><strong>NSSF Portal</strong><small>Project management system</small></span></div><Space><Link href="/login"><Button icon={<LoginOutlined />}>Sign in</Button></Link><Link href="/register"><Button type="primary" icon={<UserAddOutlined />}>Register</Button></Link></Space></header><section className="landing-hero"><div className="hero-copy"><Typography.Text className="auth-kicker">NSSF PROJECT OPERATIONS</Typography.Text><Typography.Title>One portal, one account for every project.</Typography.Title><Typography.Paragraph>Plan, deliver, review, and close ICT projects through a clear, controlled workflow.</Typography.Paragraph><Space><Link href="/register"><Button type="primary" size="large" icon={<UserAddOutlined />}>Create an account</Button></Link><Link href="/login"><Button size="large">Sign in to continue</Button></Link></Space></div><div className="hero-panel"><span className="hero-panel-label">PROJECT LIFECYCLE</span><div className="lifecycle-line"><span>01</span><i /><span>02</span><i /><span>03</span><i /><span>04</span></div><Typography.Title level={3}>From registration to closure</Typography.Title><Typography.Paragraph>Every phase has its own requirements, documents, approvals, and accountability.</Typography.Paragraph></div></section><section className="services-section"><Typography.Text className="eyebrow">SERVICES</Typography.Text><Typography.Title level={2}>Everything your project team needs</Typography.Title><Row gutter={[16, 16]}>{services.map((service) => <Col xs={24} sm={12} lg={6} key={service.title}><Card className="service-card" bordered={false}><span className="service-icon">{service.icon}</span><Typography.Title level={4}>{service.title}</Typography.Title><Typography.Paragraph type="secondary">{service.text}</Typography.Paragraph></Card></Col>)}</Row></section><footer className="landing-footer">NSSF Project Operations <span>•</span> Secure workflow workspace</footer></main>;
+}
