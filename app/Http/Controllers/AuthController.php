@@ -88,17 +88,13 @@ class AuthController extends Controller
             'name' => $validated['name'],
             'email' => $validated['email'],
             'role' => $validated['role'],
-            'password' => Hash::make($validated['password']),remote: Resolving deltas: remote: Resolving deltas: 100% (4/4), completed with 1 local object.
-To https://github.com/sadicknanyaulila4-ahlul/ICT_PROJECT.git
-   2f48d51..ddbb07d  main -> main
-branch 'main' set up to track 'origin/main'.
-gibson@gibson-Latitude-3180:~/my-app$ 
+            'password' => Hash::make($validated['password']),
         ]);
 
         Auth::login($user);
         $request->session()->regenerate();
 
-        return redirect('/dashboard');
+        return $this->redirectForRole($user);
     }
 
     public function webLogin(Request $request)
@@ -114,7 +110,18 @@ gibson@gibson-Latitude-3180:~/my-app$
 
         $request->session()->regenerate();
 
-        return redirect()->intended('/dashboard');
+        return $this->redirectForRole(Auth::user());
+    }
+
+    private function redirectForRole(User $user)
+    {
+        return match ($user->role) {
+            'analyst' => redirect()->route('project.create'),
+            'supervisor' => redirect()->route('dashboard'),
+            'manager' => redirect()->route('project.documents.preview'),
+            'dict' => redirect()->route('project.reports.preview'),
+            default => redirect()->route('dashboard'),
+        };
     }
 
     public function webLogout(Request $request)

@@ -51,7 +51,11 @@ function Planning({ documents, setDocuments, activities, setActivities, onComple
 
 function Execution({ documents, setDocuments, requirements, setRequirements, activities, onComplete }) {
     const [requirement, setRequirement] = useState({ name: '', planned_start_date: null, planned_end_date: null, actual_start_date: null, actual_end_date: null, remarks: '', score: null });
-    const allComplete = requirements.length > 0 && requirements.every((item) => item.status === 'Completed' && item.score) && activities.every((item) => item.status === 'Completed') && executionDocuments.every((name) => documents.some((item) => item.name === name && item.status === 'Approved'));
+    const allComplete = requirements.length > 0
+        && requirements.every((item) => item.status?.toLowerCase() === 'completed' && (item.score || item.test_score))
+        && activities.length > 0
+        && activities.every((item) => item.status?.toLowerCase() === 'completed')
+        && executionDocuments.every((name) => documents.some((item) => item.name === name && item.status?.toLowerCase() === 'approved'));
     const addRequirement = () => { if (!requirement.name) return message.error('Requirement name is required'); setRequirements([...requirements, { ...requirement, key: Date.now(), status: 'Pending' }]); setRequirement({ name: '', planned_start_date: null, planned_end_date: null, actual_start_date: null, actual_end_date: null, remarks: '', score: null }); };
     const updateRequirement = (key, changes) => setRequirements(requirements.map((item) => { if (item.key !== key) return item; const next = { ...item, ...changes }; return { ...next, status: next.actual_end_date ? 'Completed' : next.actual_start_date ? 'Ongoing' : 'Pending' }; }));
     const columns = [{ title: 'Requirement', dataIndex: 'name' }, { title: 'Actual start', render: (_, item) => <DatePicker value={item.actual_start_date} onChange={(value) => updateRequirement(item.key, { actual_start_date: value })} /> }, { title: 'Actual end', render: (_, item) => <DatePicker value={item.actual_end_date} onChange={(value) => updateRequirement(item.key, { actual_end_date: value })} /> }, { title: 'Status', dataIndex: 'status', render: (value) => <Tag color={statusColor[value]}>{value}</Tag> }, { title: 'UAT score', render: (_, item) => <Select allowClear value={item.score} placeholder="Score" style={{ width: 110 }} onChange={(value) => updateRequirement(item.key, { score: value })} options={[{ value: 'Pass', label: 'Pass' }, { value: 'Fail', label: 'Fail' }]} /> }, { title: 'Remarks', render: (_, item) => <Input value={item.remarks} onChange={(event) => updateRequirement(item.key, { remarks: event.target.value })} /> }];
@@ -66,15 +70,22 @@ function Closure({ documents, setDocuments, onClose }) {
     return <><DocumentList title="4. Closure documents" names={closureDocuments} documents={documents} onToggle={toggleDocument} /><Card className="mt-4" title="Lessons learned and final review"><Form layout="vertical"><Form.Item label="Lessons learned"><Input.TextArea rows={5} value={lessons} onChange={(event) => setLessons(event.target.value)} placeholder="Capture lessons, recommendations, and improvements" /></Form.Item><Space><Button icon={<DownloadOutlined />}>Generate closure report</Button><Button type="primary" disabled={!ready} onClick={onClose} icon={<CheckCircleOutlined />}>Close project</Button></Space></Form></Card></>;
 }
 
-export default function Workflow() {
-    const [phase, setPhase] = useState(0);
-    const [project, setProject] = useState(initialProject);
-    const [documents, setDocuments] = useState(initialDocuments);
-    const [activities, setActivities] = useState([]);
-    const [requirements, setRequirements] = useState([]);
+export default function Workflow({ project: persistedProject }) {
+    const phaseIndex = { Initiation: 0, Planning: 1, Execution: 2, Closure: 3 };
+    const [phase, setPhase] = useState(phaseIndex[persistedProject?.phase] ?? 0);
+    const [project, setProject] = useState(() => ({ ...initialProject, ...persistedProject }));
+    const [documents, setDocuments] = useState(() => persistedProject?.documents?.map((document) => ({ ...document, key: document.id, name: document.document_type, status: document.status })) || []);
+    const [activities, setActivities] = useState(() => persistedProject?.activities || []);
+    const [requirements, setRequirements] = useState(() => (persistedProject?.requirements || []).map((item) => ({
+        ...item,
+        key: item.key || item.id,
+        name: item.name || item.requirement_description,
+        score: item.score || item.test_score,
+        status: item.status || 'Pending',
+    })));
     const [closed, setClosed] = useState(false);
     const stepItems = ['Initiation', 'Planning', 'Execution', 'Closure'].map((title, index) => ({ title, status: index < phase ? 'finish' : index === phase ? 'process' : 'wait' }));
     const progress = Math.round((phase / 3) * 100);
     const content = useMemo(() => { if (closed) return <Card><Alert type="success" showIcon message="Project closed successfully" description="All required workflow stages, documents, requirements, testing, and attestations have been completed." /></Card>; if (phase === 0) return <Initiation project={project} setProject={setProject} documents={documents} setDocuments={setDocuments} onComplete={() => setPhase(1)} />; if (phase === 1) return <Planning documents={documents} setDocuments={setDocuments} activities={activities} setActivities={setActivities} onComplete={() => setPhase(2)} />; if (phase === 2) return <Execution documents={documents} setDocuments={setDocuments} requirements={requirements} setRequirements={setRequirements} activities={activities} onComplete={() => setPhase(3)} />; return <Closure documents={documents} setDocuments={setDocuments} onClose={() => setClosed(true)} />; }, [phase, project, documents, activities, requirements, closed]);
-    return <PortalLayout activeKey="workflow"><div className="page-heading"><div><Typography.Text className="eyebrow">PROJECT LIFECYCLE / TEST WORKSPACE</Typography.Text><Typography.Title level={1}>{project.name || 'New project'}</Typography.Title><Typography.Paragraph type="secondary">Follow the controlled project process from registration through closure.</Typography.Paragraph></div><Tag color={closed ? 'green' : 'red'}>{closed ? 'CLOSED' : `PHASE ${phase + 1} OF 4`}</Tag></div><Card className="mb-4"><Steps current={phase} items={stepItems} responsive /><Progress percent={closed ? 100 : progress} strokeColor="#9e292f" /></Card>{content}</PortalLayout>;
+    return <PortalLayout activeKey="initiation"><div className="page-heading"><div><Typography.Text className="eyebrow">PROJECT LIFECYCLE</Typography.Text><Typography.Title level={1}>{project.name || 'Project'}</Typography.Title><Typography.Paragraph type="secondary">Project #{project.id}: follow the process from registration through closure.</Typography.Paragraph></div><Tag color={closed ? 'green' : 'red'}>{closed ? 'CLOSED' : `PHASE ${phase + 1} OF 4`}</Tag></div><Card className="mb-4"><Steps current={phase} items={stepItems} responsive /><Progress percent={closed ? 100 : progress} strokeColor="#9e292f" /></Card>{content}</PortalLayout>;
 }

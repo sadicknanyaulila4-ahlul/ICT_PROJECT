@@ -15,10 +15,32 @@ use Inertia\Inertia;
 
 class ProjectController extends Controller
 {
+    private function requiredDocuments(string $phase): array
+    {
+        return match ($phase) {
+            'Initiation' => ['Approved Concept Note', 'e-Government Authority Letter'],
+            'Planning' => ['Project Proposal', 'Project Charter', 'BRD', 'SRS', 'SDD', 'Risk Management Plan', 'Change Management Plan', 'QA Management Plan', 'Procurement Management Plan', 'Stakeholder Form'],
+            'Execution' => ['FAT Report', 'UAT Report', 'Stakeholder Form', 'Installation Plan'],
+            'Closure' => ['System Implementation Form', 'User Manual', 'Data Migration Report', 'Integration Report', 'Training Report', 'Final Report', 'Post Go-Live Tracker', 'Updated SRS Document', 'Updated SDD Document'],
+            default => [],
+        };
+    }
+
+    private function missingDocuments(Project $project, string $phase): array
+    {
+        $approved = $project->documents()
+            ->where('phase', $phase)
+            ->where('status', 'Approved')
+            ->pluck('document_type')
+            ->all();
+
+        return array_values(array_diff($this->requiredDocuments($phase), $approved));
+    }
+
     /** Display the project dashboard. */
     public function index(Request $request)
     {
-        $query = Project::with(['supervisor', 'analyst', 'activities', 'documents']);
+        $query = Project::with(['supervisor', 'analyst', 'activities', 'requirements', 'documents']);
 
         if ($request->has('status')) {
             $query->where('status', $request->status);
@@ -45,9 +67,16 @@ class ProjectController extends Controller
     /** Show the project creation form. */
     public function create()
     {
-        return Inertia::render('project/initiation/Register', [
+        return Inertia::render('Project/initiation/Register', [
             'systems' => System::where('is_active', true)->get(),
             'infrastructure' => InfrastructureComponent::where('is_active', true)->get(),
+        ]);
+    }
+
+    public function workflow(Project $project)
+    {
+        return Inertia::render('Project/Workflow', [
+            'project' => $project->load(['activities', 'requirements', 'documents']),
         ]);
     }
 
@@ -76,6 +105,10 @@ class ProjectController extends Controller
             'phase' => 'Initiation',
         ]);
 
+        if ($request->header('X-Inertia')) {
+            return redirect()->route('project.workflow', $project)->with('success', 'Project created successfully.');
+        }
+
         return response()->json([
             'message' => 'Project created successfully',
             'project' => $project->load(['supervisor', 'analyst']),
@@ -99,10 +132,14 @@ class ProjectController extends Controller
     public function showDocuments(Project $project)
     {
         $documents = $project->documents()->where('phase', $project->phase)->get();
+        $missingDocuments = $this->missingDocuments($project, $project->phase);
+
         return response()->json([
             'project_id' => $project->id,
             'phase' => $project->phase,
             'documents' => $documents,
+            'required_document_types' => $this->requiredDocuments($project->phase),
+            'missing_documents' => $missingDocuments,
         ]);
     }
 
@@ -338,15 +375,12 @@ class ProjectController extends Controller
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
-        $requiredDocs = $project->documents()
-            ->where('phase', 'Initiation')
-            ->where('is_required', true)
-            ->where('status', '!=', 'Approved')
-            ->count();
+        $missingDocs = $this->missingDocuments($project, 'Initiation');
 
-        if ($requiredDocs > 0) {
+        if ($missingDocs) {
             return response()->json([
                 'message' => 'All required Initiation phase documents must be approved before proceeding to Planning.',
+                'missing_documents' => $missingDocs,
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
@@ -369,15 +403,12 @@ class ProjectController extends Controller
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
-        $requiredDocs = $project->documents()
-            ->where('phase', 'Planning')
-            ->where('is_required', true)
-            ->where('status', '!=', 'Approved')
-            ->count();
+        $missingDocs = $this->missingDocuments($project, 'Planning');
 
-        if ($requiredDocs > 0) {
+        if ($missingDocs) {
             return response()->json([
                 'message' => 'All required Planning phase documents must be approved.',
+                'missing_documents' => $missingDocs,
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
@@ -426,15 +457,12 @@ class ProjectController extends Controller
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
-        $requiredDocs = $project->documents()
-            ->where('phase', 'Execution')
-            ->where('is_required', true)
-            ->where('status', '!=', 'Approved')
-            ->count();
+        $missingDocs = $this->missingDocuments($project, 'Execution');
 
-        if ($requiredDocs > 0) {
+        if ($missingDocs) {
             return response()->json([
                 'message' => 'All required Execution phase documents must be approved.',
+                'missing_documents' => $missingDocs,
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
@@ -483,15 +511,12 @@ class ProjectController extends Controller
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
-        $requiredDocs = $project->documents()
-            ->where('phase', 'Closure')
-            ->where('is_required', true)
-            ->where('status', '!=', 'Approved')
-            ->count();
+        $missingDocs = $this->missingDocuments($project, 'Closure');
 
-        if ($requiredDocs > 0) {
+        if ($missingDocs) {
             return response()->json([
                 'message' => 'All required Closure phase documents must be approved.',
+                'missing_documents' => $missingDocs,
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
