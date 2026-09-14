@@ -1,15 +1,16 @@
-import React, { useState } from 'react';
-import { Form, Input, Select, Button, Card, message } from 'antd';
+import { Button, Card, Form, Input, Select, message } from 'antd';
 import { useForm } from '@inertiajs/react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import PortalLayout from '@/Layouts/PortalLayout';
 
 const { Option } = Select;
 
-export default function Register({ systems, infrastructure }) {
+export default function Register({ systems = [], infrastructure = [] }) {
     const { data, setData, post, processing, errors } = useForm({
         name: '',
         description: '',
         budget: '',
+        implementation_team_type: 'Internal',
+        implementation_team_names: '',
         project_source: 'System Development',
         project_nature: 'Planned',
         project_activity: 'New Implementation (Major)',
@@ -32,7 +33,7 @@ export default function Register({ systems, infrastructure }) {
     };
 
     return (
-        <AuthenticatedLayout>
+        <PortalLayout activeKey="initiation">
             <Card title="Register New Project">
                 <Form layout="vertical" onFinish={handleSubmit}>
                     <Form.Item label="Project Name" required>
@@ -44,6 +45,16 @@ export default function Register({ systems, infrastructure }) {
                     </Form.Item>
                     <Form.Item label="Budget">
                         <Input type="number" value={data.budget} onChange={e => setData('budget', e.target.value)} />
+                    </Form.Item>
+                    <Form.Item label="Implementation Team" required>
+                        <Select value={data.implementation_team_type} onChange={val => setData('implementation_team_type', val)}>
+                            <Option value="Internal">Internal</Option>
+                            <Option value="External">External</Option>
+                        </Select>
+                    </Form.Item>
+                    <Form.Item label="Team Member Names" required>
+                        <Input value={data.implementation_team_names} onChange={e => setData('implementation_team_names', e.target.value)} placeholder="Enter names separated by commas" />
+                        {errors.implementation_team_names && <div style={{ color: 'red' }}>{errors.implementation_team_names}</div>}
                     </Form.Item>
                     <Form.Item label="Project Source" required>
                         <Select value={data.project_source} onChange={val => setData('project_source', val)}>
@@ -116,6 +127,6 @@ export default function Register({ systems, infrastructure }) {
                     </Form.Item>
                 </Form>
             </Card>
-        </AuthenticatedLayout>
+        </PortalLayout>
     );
 }

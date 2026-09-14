@@ -6,7 +6,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
+use Inertia\Inertia;
 
 class AuthController extends Controller
 {
@@ -25,7 +25,7 @@ class AuthController extends Controller
         $user = User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
-            'password' => Hash::make($validated['password']),
+            'password' => $validated['password'],
             'role' => $validated['role'],
         ]);
 
@@ -48,13 +48,20 @@ class AuthController extends Controller
             'password' => 'required|string',
         ]);
 
-        if (!Auth::attempt($credentials)) {
+        if (! Auth::attempt($credentials)) {
             return response()->json([
                 'message' => 'Invalid credentials',
             ], Response::HTTP_UNAUTHORIZED);
         }
 
         $user = Auth::user();
+        if (! $user instanceof User) {
+            Auth::logout();
+
+            return response()->json([
+                'message' => 'Invalid credentials',
+            ], Response::HTTP_UNAUTHORIZED);
+        }
         $token = $user->createToken('api-token')->plainTextToken;
 
         return response()->json([
@@ -66,35 +73,7 @@ class AuthController extends Controller
 
     public function showLogin()
     {
-        return \Inertia\Inertia::render('Auth/Login');
-    }
-
-    public function showRegister()
-    {
-        return \Inertia\Inertia::render('Auth/Register');
-        
-    }
-
-    public function webRegister(Request $request)
-    {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|max:255|unique:users,email',
-            'role' => 'required|in:analyst,supervisor,manager,dict',
-            'password' => 'required|string|min:8|confirmed',
-        ]);
-
-        $user = User::create([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'role' => $validated['role'],
-            'password' => Hash::make($validated['password']),
-        ]);
-
-        Auth::login($user);
-        $request->session()->regenerate();
-
-        return $this->redirectForRole($user);
+        return Inertia::render('Auth/Login');
     }
 
     public function webLogin(Request $request)
@@ -104,24 +83,25 @@ class AuthController extends Controller
             'password' => 'required|string',
         ]);
 
-        if (!Auth::attempt($credentials, $request->boolean('remember'))) {
+        if (! Auth::attempt($credentials, $request->boolean('remember'))) {
             return back()->withErrors(['email' => 'The email or password is incorrect.']);
         }
 
         $request->session()->regenerate();
 
-        return $this->redirectForRole(Auth::user());
+        $user = Auth::user();
+        if (! $user instanceof User) {
+            Auth::logout();
+
+            return back()->withErrors(['email' => 'The email or password is incorrect.']);
+        }
+
+        return $this->redirectForRole($user);
     }
 
-    private function redirectForRole(User $user)
+    public function redirectForRole(User $user)
     {
-        return match ($user->role) {
-            'analyst' => redirect()->route('project.create'),
-            'supervisor' => redirect()->route('dashboard'),
-            'manager' => redirect()->route('project.documents.preview'),
-            'dict' => redirect()->route('project.reports.preview'),
-            default => redirect()->route('dashboard'),
-        };
+        return redirect()->route('dashboard');
     }
 
     public function webLogout(Request $request)
@@ -138,7 +118,10 @@ class AuthController extends Controller
      */
     public function logout(Request $request)
     {
-        $request->user()->currentAccessToken()->delete();
+        $user = $request->user();
+        if ($user instanceof User) {
+            $user->currentAccessToken()?->delete();
+        }
 
         return response()->json([
             'message' => 'Logged out successfully',

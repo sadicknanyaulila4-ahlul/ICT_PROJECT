@@ -16,6 +16,10 @@ class RequirementComponent extends Model
         'actual_start_date',
         'actual_end_date',
         'status',
+        'review_status',
+        'review_comments',
+        'reviewed_by',
+        'reviewed_at',
         'test_score',
         'test_comments',
         'remarks',
@@ -24,11 +28,17 @@ class RequirementComponent extends Model
 
     protected $casts = [
         'overall_percentage' => 'decimal:2',
+        'reviewed_at' => 'datetime',
     ];
 
     public function project()
     {
         return $this->belongsTo(Project::class);
+    }
+
+    public function reviewer()
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
     }
 
     // Calculate status percentage based on dates

@@ -11,11 +11,11 @@ class UserController extends Controller
      */
     public function profile(Request $request)
     {
-        $user = $request->user()->load('roles');
+        $user = $request->user();
 
         return response()->json([
             'user' => $user,
-            'roles' => $user->roles->pluck('name'),
+            'roles' => $user ? [$user->role] : [],
         ]);
     }
 }

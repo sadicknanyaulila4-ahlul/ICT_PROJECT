@@ -18,7 +18,7 @@ return new class extends Migration
             $table->text('lesson_description');
             $table->text('recommendations')->nullable();
             $table->unsignedBigInteger('created_by');
-            $table->enum('status', ['Draft', 'Submitted', 'Reviewed', 'Approved'])->default('Draft');
+            $table->enum('status', ['Draft', 'Submitted', 'Reviewed', 'Approved', 'Returned'])->default('Draft');
             $table->unsignedBigInteger('reviewed_by')->nullable();
             $table->timestamp('reviewed_at')->nullable();
             $table->text('review_comments')->nullable();

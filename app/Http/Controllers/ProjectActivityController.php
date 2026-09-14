@@ -9,6 +9,12 @@ use Illuminate\Http\Response;
 
 class ProjectActivityController extends Controller
 {
+    public function storeForProject(Request $request, Project $project)
+    {
+        $request->merge(['project_id' => $project->id]);
+
+        return $this->store($request);
+    }
     /**
      * Get all activities for a project
      */
@@ -32,6 +38,9 @@ class ProjectActivityController extends Controller
             'planned_end_date' => 'required|date|after:planned_start_date',
             'responsible_person' => 'nullable|string|max:255',
         ]);
+
+        $project = Project::findOrFail($validated['project_id']);
+        abort_unless($project->phase === 'Planning', 422, 'Activities can only be added during Planning.');
 
         $activity = ProjectActivity::create([
             ...$validated,
@@ -62,8 +71,8 @@ class ProjectActivityController extends Controller
             'expected_deliverable' => 'sometimes|nullable|string',
             'planned_start_date' => 'sometimes|date',
             'planned_end_date' => 'sometimes|date',
-            'actual_start_date' => 'sometimes|nullable|date',
-            'actual_end_date' => 'sometimes|nullable|date',
+            'actual_start_date' => 'sometimes|nullable|date|after_or_equal:planned_start_date|before_or_equal:today',
+            'actual_end_date' => 'sometimes|nullable|date|after_or_equal:actual_start_date|before_or_equal:today',
             'responsible_person' => 'sometimes|nullable|string|max:255',
             'remarks' => 'sometimes|nullable|string',
             'attachments' => 'sometimes|nullable|array',
@@ -71,6 +80,17 @@ class ProjectActivityController extends Controller
 
         $activity->update($validated);
         $activity->updateStatusFromDates();
+
+        if ($activity->project->phase === 'Planning' && array_intersect(array_keys($validated), [
+            'activity_name', 'expected_deliverable', 'planned_start_date', 'planned_end_date', 'responsible_person',
+        ])) {
+            $activity->project->update([
+                'implementation_plan_status' => 'Pending Review',
+                'implementation_plan_review_comments' => null,
+                'implementation_plan_reviewed_at' => null,
+                'implementation_plan_reviewed_by' => null,
+            ]);
+        }
 
         return response()->json([
             'message' => 'Activity updated successfully',
@@ -91,6 +111,13 @@ class ProjectActivityController extends Controller
 
         $activity->delete();
 
+        $activity->project->update([
+            'implementation_plan_status' => 'Pending Review',
+            'implementation_plan_review_comments' => null,
+            'implementation_plan_reviewed_at' => null,
+            'implementation_plan_reviewed_by' => null,
+        ]);
+
         return response()->json([
             'message' => 'Activity deleted successfully',
         ]);
@@ -103,7 +130,7 @@ class ProjectActivityController extends Controller
     {
         $validated = $request->validate([
             'actual_start_date' => 'sometimes|required|date|before_or_equal:' . now()->toDateString(),
-            'actual_end_date' => 'sometimes|nullable|date',
+            'actual_end_date' => 'sometimes|nullable|date|after_or_equal:actual_start_date|before_or_equal:today',
             'remarks' => 'sometimes|nullable|string',
             'attachments' => 'sometimes|nullable|array',
         ]);

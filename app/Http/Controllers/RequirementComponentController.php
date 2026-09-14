@@ -9,6 +9,12 @@ use Illuminate\Http\Response;
 
 class RequirementComponentController extends Controller
 {
+    public function storeForProject(Request $request, Project $project)
+    {
+        $request->merge(['project_id' => $project->id]);
+
+        return $this->store($request);
+    }
     /**
      * Get all requirements for a project
      */
@@ -32,9 +38,14 @@ class RequirementComponentController extends Controller
             'planned_end_date' => 'required|date|after:planned_start_date',
         ]);
 
+        $project = Project::findOrFail($validated['project_id']);
+        abort_unless($project->phase === 'Execution', 422, 'Requirements can only be added during Execution.');
+        abort_unless($project->documents()->where('phase', 'Planning')->where('document_type', 'SRS')->where('status', 'Approved')->exists(), 422, 'An approved SRS is required before submitting requirements.');
+
         $requirement = RequirementComponent::create([
             ...$validated,
             'status' => 'Pending',
+            'review_status' => 'Pending Review',
         ]);
 
         return response()->json([
@@ -43,55 +54,82 @@ class RequirementComponentController extends Controller
         ], Response::HTTP_CREATED);
     }
 
+    /** Review an individual RTM component. */
+    public function review(Request $request, RequirementComponent $requirementComponent)
+    {
+        $validated = $request->validate([
+            'status' => 'required|in:Approved,Returned',
+            'review_comments' => 'nullable|string|required_if:status,Returned',
+        ]);
+
+        $requirementComponent->update([
+            'review_status' => $validated['status'],
+            'review_comments' => $validated['review_comments'] ?? null,
+            'reviewed_by' => $request->user()->id,
+            'reviewed_at' => now(),
+        ]);
+
+        return response()->json(['message' => 'Requirement reviewed successfully.', 'requirement' => $requirementComponent]);
+    }
+
     /**
      * Get a single requirement
      */
-    public function show(RequirementComponent $requirement)
+    public function show(RequirementComponent $requirementComponent)
     {
-        return response()->json($requirement);
+        return response()->json($requirementComponent);
     }
 
     /**
      * Update requirement component
      */
-    public function update(Request $request, RequirementComponent $requirement)
+    public function update(Request $request, RequirementComponent $requirementComponent)
     {
         $validated = $request->validate([
             'requirement_description' => 'sometimes|string',
-            'actual_start_date' => 'sometimes|nullable|date|before_or_equal:' . now()->toDateString(),
-            'actual_end_date' => 'sometimes|nullable|date',
+            'actual_start_date' => 'sometimes|nullable|date|after_or_equal:planned_start_date|before_or_equal:' . now()->toDateString(),
+            'actual_end_date' => 'sometimes|nullable|date|after_or_equal:actual_start_date|before_or_equal:' . now()->toDateString(),
             'status' => 'sometimes|in:Pending,Ongoing,Completed',
             'test_score' => 'sometimes|nullable|in:Pass,Fail',
             'test_comments' => 'sometimes|nullable|string',
             'remarks' => 'sometimes|nullable|string',
         ]);
 
-        $requirement->update($validated);
+        $requirementComponent->update($validated);
+
+        if ($requirementComponent->review_status === 'Returned') {
+            $requirementComponent->update([
+                'review_status' => 'Pending Review',
+                'review_comments' => null,
+                'reviewed_by' => null,
+                'reviewed_at' => null,
+            ]);
+        }
 
         // Auto-update status based on dates
         if ($request->has('actual_start_date') || $request->has('actual_end_date')) {
-            if (!$requirement->actual_start_date) {
-                $requirement->status = 'Pending';
-            } elseif ($requirement->actual_start_date && !$requirement->actual_end_date) {
-                $requirement->status = 'Ongoing';
-            } elseif ($requirement->actual_start_date && $requirement->actual_end_date) {
-                $requirement->status = 'Completed';
+            if (! $requirementComponent->actual_start_date) {
+                $requirementComponent->status = 'Pending';
+            } elseif ($requirementComponent->actual_start_date && ! $requirementComponent->actual_end_date) {
+                $requirementComponent->status = 'Ongoing';
+            } elseif ($requirementComponent->actual_start_date && $requirementComponent->actual_end_date) {
+                $requirementComponent->status = 'Completed';
             }
-            $requirement->save();
+            $requirementComponent->save();
         }
 
         return response()->json([
             'message' => 'Requirement updated successfully',
-            'requirement' => $requirement,
+            'requirement' => $requirementComponent,
         ]);
     }
 
     /**
      * Delete requirement component
      */
-    public function destroy(RequirementComponent $requirement)
+    public function destroy(RequirementComponent $requirementComponent)
     {
-        $requirement->delete();
+        $requirementComponent->delete();
 
         return response()->json([
             'message' => 'Requirement deleted successfully',

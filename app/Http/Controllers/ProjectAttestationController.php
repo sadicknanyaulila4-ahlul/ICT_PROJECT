@@ -40,6 +40,21 @@ class ProjectAttestationController extends Controller
             'attestation_details' => 'sometimes|nullable|string',
         ]);
 
+        $project = Project::findOrFail($validated['project_id']);
+        $userRole = Auth::user()->role;
+        if ($userRole === 'manager' && !in_array($validated['attestor_role'], ['SDMM', 'IDMM'], true)) {
+            return response()->json(['message' => 'Managers may attest only as SDMM or IDMM.'], Response::HTTP_FORBIDDEN);
+        }
+        if ($userRole === 'dict' && $validated['attestor_role'] !== 'DICT') {
+            return response()->json(['message' => 'DICT may attest only as DICT.'], Response::HTTP_FORBIDDEN);
+        }
+        if (!in_array($userRole, ['manager', 'dict'], true)) {
+            return response()->json(['message' => 'Only Managers and DICT may attest projects.'], Response::HTTP_FORBIDDEN);
+        }
+        if ($validated['attestor_role'] === 'DICT' && !$project->manager_attested) {
+            return response()->json(['message' => 'Manager attestation is required before DICT.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
         // Check if attestation for this role already exists
         $exists = ProjectAttestation::where('project_id', $validated['project_id'])
             ->where('attestor_role', $validated['attestor_role'])
@@ -58,6 +73,8 @@ class ProjectAttestationController extends Controller
             'status' => 'Attested',
             'attested_at' => now(),
         ]);
+
+        $project->update($validated['attestor_role'] === 'DICT' ? ['dict_attested' => true] : ['manager_attested' => true]);
 
         return response()->json([
             'message' => 'Project attested successfully by ' . $validated['attestor_role'],

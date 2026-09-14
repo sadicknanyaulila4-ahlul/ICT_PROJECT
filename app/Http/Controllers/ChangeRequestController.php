@@ -10,6 +10,12 @@ use Illuminate\Support\Facades\Auth;
 
 class ChangeRequestController extends Controller
 {
+    public function storeForProject(Request $request, Project $project)
+    {
+        $request->merge(['project_id' => $project->id]);
+
+        return $this->store($request);
+    }
     /**
      * Get all change requests for a project
      */
@@ -38,6 +44,9 @@ class ChangeRequestController extends Controller
             'impact_level' => 'sometimes|in:Low,Medium,High',
             'impact_description' => 'sometimes|nullable|string',
         ]);
+
+        $project = Project::findOrFail($validated['project_id']);
+        abort_unless($project->phase === 'Execution', 422, 'Changes can only be recorded during Execution.');
 
         $changeRequest = ChangeRequest::create([
             ...$validated,

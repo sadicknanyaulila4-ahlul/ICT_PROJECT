@@ -10,16 +10,22 @@ class ActivityController extends Controller
 {
     public function index(Project $project)
     {
-        $activities = $project->activities()->get();
-        return Inertia::render('Project/Planning/Activities', [
-            'project' => $project,
+        $activities = $project->activities()->orderBy('planned_start_date')->get();
+        if (request()->header('X-Inertia')) {
+            return Inertia::render('Project/Planning/Activities', [
+                'project' => $project,
+                'activities' => $activities,
+            ]);
+        }
+
+        return response()->json([
             'activities' => $activities,
         ]);
     }
 
     public function store(Request $request, Project $project)
     {
-        $request->validate([
+        $validated = $request->validate([
             'activity_name' => 'required|string',
             'expected_deliverable' => 'nullable|string',
             'planned_start_date' => 'required|date',
@@ -27,13 +33,15 @@ class ActivityController extends Controller
             'responsible_person' => 'nullable|string',
         ]);
 
-        $project->activities()->create($request->all());
+        $project->activities()->create($validated);
         return back()->with('success', 'Activity added.');
     }
 
-    public function update(Request $request, ProjectActivity $activity)
+    public function update(Request $request, Project $project, ProjectActivity $activity)
     {
-        $request->validate([
+        abort_if($activity->project_id !== $project->id, 404);
+
+        $validated = $request->validate([
             'activity_name' => 'string',
             'expected_deliverable' => 'nullable|string',
             'planned_start_date' => 'date',
@@ -44,23 +52,24 @@ class ActivityController extends Controller
             'remarks' => 'nullable|string',
         ]);
 
-        $activity->update($request->all());
+        $activity->update($validated);
 
         // Auto-update status
         if ($activity->actual_start_date && !$activity->actual_end_date) {
-            $activity->status = 'ongoing';
+            $activity->status = 'Ongoing';
         } elseif ($activity->actual_end_date) {
-            $activity->status = 'completed';
+            $activity->status = 'Completed';
         } else {
-            $activity->status = 'not_started';
+            $activity->status = 'Not Started';
         }
         $activity->save();
 
         return back()->with('success', 'Activity updated.');
     }
 
-    public function destroy(ProjectActivity $activity)
+    public function destroy(Project $project, ProjectActivity $activity)
     {
+        abort_if($activity->project_id !== $project->id, 404);
         $activity->delete();
         return back()->with('success', 'Activity deleted.');
     }

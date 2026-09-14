@@ -9,11 +9,13 @@ class Project extends Model
     use HasFactory;
 
     protected $fillable = [
-        'name', 'description', 'budget', 'project_source', 'project_nature',
+        'name', 'description', 'budget', 'implementation_team_type', 'implementation_team_names', 'project_source', 'project_nature',
         'project_activity', 'existing_system_id', 'existing_infrastructure_id',
         'custom_system_name', 'custom_infrastructure_name',
         'supervisor_id', 'assigned_analyst_id', 'status', 'phase', 
-        'is_approved', 'supervisor_approved', 'manager_attested', 'dict_attested'
+        'is_approved', 'supervisor_approved', 'manager_attested', 'dict_attested',
+        'implementation_plan_status', 'implementation_plan_review_comments',
+        'implementation_plan_reviewed_at', 'implementation_plan_reviewed_by',
     ];
 
     protected $casts = [
@@ -22,6 +24,7 @@ class Project extends Model
         'supervisor_approved' => 'boolean',
         'manager_attested' => 'boolean',
         'dict_attested' => 'boolean',
+        'implementation_plan_reviewed_at' => 'datetime',
     ];
 
     public function activities() {
@@ -76,7 +79,7 @@ class Project extends Model
 
     // Check if all initiation documents are uploaded
     public function allInitiationDocumentsComplete() {
-        $requiredDocs = ['Concept Note', 'Approval Letter', 'Project Feasibility', 'Other Documents'];
+        $requiredDocs = ['Approved Concept Note', 'e-Government Authority Letter'];
         foreach ($requiredDocs as $doc) {
             if (!$this->documents()->where('phase', 'Initiation')->where('document_type', $doc)->where('status', 'Approved')->exists()) {
                 return false;

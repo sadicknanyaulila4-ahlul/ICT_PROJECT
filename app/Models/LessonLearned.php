@@ -9,6 +9,8 @@ class LessonLearned extends Model
 {
     use HasFactory;
 
+    protected $table = 'lessons_learned';
+
     protected $fillable = [
         'project_id',
         'category',

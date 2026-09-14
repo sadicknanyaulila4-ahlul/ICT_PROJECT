@@ -10,6 +10,12 @@ use Illuminate\Support\Facades\Auth;
 
 class LessonsLearnedController extends Controller
 {
+    public function storeForProject(Request $request, Project $project)
+    {
+        $request->merge(['project_id' => $project->id]);
+
+        return $this->store($request);
+    }
     /**
      * Get all lessons learned for a project
      */
@@ -41,6 +47,9 @@ class LessonsLearnedController extends Controller
             'recommendations' => 'sometimes|nullable|string',
         ]);
 
+        $project = Project::findOrFail($validated['project_id']);
+        abort_unless($project->phase === 'Closure', 422, 'Lessons learned can only be recorded during Closure.');
+
         $lesson = LessonLearned::create([
             ...$validated,
             'created_by' => Auth::id(),
@@ -56,18 +65,18 @@ class LessonsLearnedController extends Controller
     /**
      * Get a single lesson learned
      */
-    public function show(LessonLearned $lesson)
+    public function show(LessonLearned $lessonLearned)
     {
-        return response()->json($lesson->load(['creator', 'reviewer', 'project']));
+        return response()->json($lessonLearned->load(['creator', 'reviewer', 'project']));
     }
 
     /**
      * Update lesson learned
      */
-    public function update(Request $request, LessonLearned $lesson)
+    public function update(Request $request, LessonLearned $lessonLearned)
     {
         // Only allow editing if status is Draft
-        if ($lesson->status !== 'Draft') {
+        if ($lessonLearned->status !== 'Draft') {
             return response()->json([
                 'message' => 'Only draft lessons learned can be edited.',
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
@@ -79,44 +88,44 @@ class LessonsLearnedController extends Controller
             'recommendations' => 'sometimes|nullable|string',
         ]);
 
-        $lesson->update($validated);
+        $lessonLearned->update($validated);
 
         return response()->json([
             'message' => 'Lesson learned updated successfully',
-            'lesson' => $lesson,
+            'lesson' => $lessonLearned,
         ]);
     }
 
     /**
      * Submit lesson learned for review
      */
-    public function submit(LessonLearned $lesson)
+    public function submit(LessonLearned $lessonLearned)
     {
-        if ($lesson->status !== 'Draft') {
+        if (! in_array($lessonLearned->status, ['Draft', 'Returned'], true)) {
             return response()->json([
-                'message' => 'Only draft lessons learned can be submitted.',
+                'message' => 'Only draft or returned lessons learned can be submitted.',
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
-        $lesson->update(['status' => 'Submitted']);
+        $lessonLearned->update(['status' => 'Submitted']);
 
         return response()->json([
             'message' => 'Lesson learned submitted for review',
-            'lesson' => $lesson,
+            'lesson' => $lessonLearned,
         ]);
     }
 
     /**
      * Review lesson learned (approve or return)
      */
-    public function review(Request $request, LessonLearned $lesson)
+    public function review(Request $request, LessonLearned $lessonLearned)
     {
         $validated = $request->validate([
             'status' => 'required|in:Approved,Returned',
             'review_comments' => 'nullable|string',
         ]);
 
-        $lesson->update([
+        $lessonLearned->update([
             'status' => $validated['status'],
             'reviewed_by' => Auth::id(),
             'reviewed_at' => now(),
@@ -125,22 +134,22 @@ class LessonsLearnedController extends Controller
 
         return response()->json([
             'message' => 'Lesson learned reviewed successfully',
-            'lesson' => $lesson,
+            'lesson' => $lessonLearned,
         ]);
     }
 
     /**
      * Delete lesson learned
      */
-    public function destroy(LessonLearned $lesson)
+    public function destroy(LessonLearned $lessonLearned)
     {
-        if ($lesson->status !== 'Draft') {
+        if ($lessonLearned->status !== 'Draft') {
             return response()->json([
                 'message' => 'Only draft lessons learned can be deleted.',
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
-        $lesson->delete();
+        $lessonLearned->delete();
 
         return response()->json([
             'message' => 'Lesson learned deleted successfully',

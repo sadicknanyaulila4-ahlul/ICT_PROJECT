@@ -4,19 +4,29 @@ use App\Http\Controllers\ActivityController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\RequirementController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\AdminUserController;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ProfileController;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', fn () => Inertia::render('Home'))->name('home');
-Route::get('/login', [App\Http\Controllers\AuthController::class, 'showLogin'])->name('login');
-Route::post('/login', [App\Http\Controllers\AuthController::class, 'webLogin'])->name('web.login');
-Route::get('/register', [App\Http\Controllers\AuthController::class, 'showRegister'])->name('register');
-Route::post('/register', [App\Http\Controllers\AuthController::class, 'webRegister'])->name('web.register');
-Route::post('/logout', [App\Http\Controllers\AuthController::class, 'webLogout'])->name('web.logout');
+Route::redirect('/', '/login')->name('home');
+Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
+Route::post('/login', [AuthController::class, 'webLogin'])->name('web.login');
+Route::post('/logout', [AuthController::class, 'webLogout'])->name('web.logout');
 Route::middleware('auth')->group(function () {
-Route::get('/dashboard', [ProjectController::class, 'index'])->middleware('role:analyst,supervisor,manager,dict')->name('dashboard');
-Route::get('/profile', fn () => Inertia::render('Profile'))->middleware('role:analyst,supervisor,manager,dict')->name('profile');
-Route::get('/projects/{project}/workflow', [ProjectController::class, 'workflow'])->middleware('role:analyst,supervisor,manager,dict')->name('project.workflow');
+Route::get('/dashboard', [ProjectController::class, 'index'])->middleware('role:admin,analyst,supervisor,manager,dict')->name('dashboard');
+Route::get('/profile', [ProfileController::class, 'show'])->middleware('role:admin,analyst,supervisor,manager,dict')->name('profile');
+Route::patch('/profile', [ProfileController::class, 'update'])->middleware('role:admin,analyst,supervisor,manager,dict')->name('profile.update');
+Route::post('/profile/photo', [ProfileController::class, 'updatePhoto'])->middleware('role:admin,analyst,supervisor,manager,dict')->name('profile.photo.update');
+Route::delete('/profile/photo', [ProfileController::class, 'destroyPhoto'])->middleware('role:admin,analyst,supervisor,manager,dict')->name('profile.photo.destroy');
+Route::get('/notifications', fn () => Inertia::render('Notifications'))->middleware('role:admin,analyst,supervisor,manager,dict')->name('notifications');
+Route::get('/support', fn () => Inertia::render('Support'))->middleware('role:admin,analyst,supervisor,manager,dict')->name('support');
+Route::get('/admin/users', [AdminUserController::class, 'index'])->middleware('role:admin')->name('admin.users.index');
+Route::post('/admin/users', [AdminUserController::class, 'store'])->middleware('role:admin')->name('admin.users.store');
+Route::patch('/admin/users/{user}', [AdminUserController::class, 'update'])->middleware('role:admin')->name('admin.users.update');
+Route::delete('/admin/users/{user}', [AdminUserController::class, 'destroy'])->middleware('role:admin')->name('admin.users.destroy');
+Route::get('/projects/{project}/workflow', [ProjectController::class, 'workflow'])->middleware('role:admin,analyst,supervisor,manager,dict')->name('project.workflow');
 Route::get('/requirements-tracker-preview', function () {
 	return Inertia::render('Project/Execution/Traceability');
 })->middleware('role:analyst,supervisor')->name('requirements.preview');

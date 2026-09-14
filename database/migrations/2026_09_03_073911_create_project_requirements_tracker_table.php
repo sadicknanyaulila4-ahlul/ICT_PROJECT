@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('project_requirements_tracker', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('project_id');
-            $table->enum('status', ['Draft', 'Submitted', 'Approved'])->default('Draft');
+            $table->enum('status', ['Draft', 'Submitted', 'Approved', 'Returned'])->default('Draft');
             $table->unsignedBigInteger('submitted_by')->nullable();
             $table->timestamp('submitted_at')->nullable();
             $table->unsignedBigInteger('approved_by')->nullable();

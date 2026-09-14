@@ -8,6 +8,7 @@ use App\Models\RequirementComponent;
 use App\Models\ProjectAttestation;
 use App\Models\System;
 use App\Models\InfrastructureComponent;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
@@ -19,7 +20,7 @@ class ProjectController extends Controller
     {
         return match ($phase) {
             'Initiation' => ['Approved Concept Note', 'e-Government Authority Letter'],
-            'Planning' => ['Project Proposal', 'Project Charter', 'BRD', 'SRS', 'SDD', 'Risk Management Plan', 'Change Management Plan', 'QA Management Plan', 'Procurement Management Plan', 'Stakeholder Form'],
+            'Planning' => ['Project Proposal', 'Project Charter', 'BRD', 'SRS', 'SDD', 'Risk Management Plan', 'Change Management Plan', 'QA Management Plan', 'Procurement Management Plan'],
             'Execution' => ['FAT Report', 'UAT Report', 'Stakeholder Form', 'Installation Plan'],
             'Closure' => ['System Implementation Form', 'User Manual', 'Data Migration Report', 'Integration Report', 'Training Report', 'Final Report', 'Post Go-Live Tracker', 'Updated SRS Document', 'Updated SDD Document'],
             default => [],
@@ -75,8 +76,53 @@ class ProjectController extends Controller
 
     public function workflow(Project $project)
     {
+        $project->load([
+            'activities', 'requirements.reviewer', 'documents.uploader', 'documents.reviewer',
+            'changeRequests.requester', 'changeRequests.approver', 'lessonsLearned.creator',
+            'lessonsLearned.reviewer', 'attestations.attestor', 'requirementsTracker', 'supervisor', 'analyst',
+        ]);
+
+        $role = Auth::user()?->role;
+
+        // Serialize with camelCase aliases expected by the React Workflow page.
+        $data = $project->toArray();
+        $data['change_requests'] = $data['change_requests'] ?? [];
+        $data['changeRequests'] = $project->changeRequests;
+        $data['lessons_learned'] = $data['lessons_learned'] ?? [];
+        $data['lessonsLearned'] = $project->lessonsLearned;
+        $data['requirements_tracker'] = $data['requirements_tracker'] ?? null;
+        $data['requirementsTracker'] = $project->requirementsTracker;
+        $data['overall_implementation'] = $project->getOverallImplementationPercentage();
+
+        // Role-based visibility flags consumed by the frontend.
+        $data['permissions'] = [
+            'can_assign' => in_array($role, ['supervisor'], true),
+            'can_upload_initiation' => $role === 'supervisor',
+            'can_upload_other' => in_array($role, ['analyst', 'supervisor'], true),
+            'can_review_documents' => $role === 'supervisor',
+            'can_plan' => $role === 'analyst',
+            'can_review_plan' => $role === 'supervisor',
+            'can_update_progress' => $role === 'analyst',
+            'can_review_requirements' => $role === 'supervisor',
+            'can_change' => $role === 'analyst',
+            'can_decide_change' => $role === 'supervisor',
+            'can_lesson' => $role === 'analyst',
+            'can_review_lesson' => $role === 'supervisor',
+            'can_attest_manager' => $role === 'manager',
+            'can_attest_dict' => $role === 'dict',
+            'can_transition' => $role === 'supervisor',
+            'can_close' => $role === 'supervisor',
+            'can_view_financials' => in_array($role, ['supervisor', 'manager', 'dict', 'admin'], true),
+        ];
+
+        $analysts = [];
+        if (in_array($role, ['supervisor', 'admin'], true)) {
+            $analysts = User::query()->where('role', 'analyst')->select('id', 'name', 'email')->orderBy('name')->get();
+        }
+
         return Inertia::render('Project/Workflow', [
-            'project' => $project->load(['activities', 'requirements', 'documents']),
+            'project' => $data,
+            'analysts' => $analysts,
         ]);
     }
 
@@ -89,6 +135,8 @@ class ProjectController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'budget' => 'nullable|numeric|min:0',
+            'implementation_team_type' => 'required|in:Internal,External',
+            'implementation_team_names' => 'required|string',
             'project_source' => 'required|in:System Development,Infrastructure Development',
             'project_nature' => 'required|in:Planned,Adhoc',
             'project_activity' => 'required|in:New Implementation (Major),New Implementation (Minor),Change Request,Additional Requirements,Review/Enhancement,Integration',
@@ -97,6 +145,18 @@ class ProjectController extends Controller
             'custom_system_name' => 'nullable|string',
             'custom_infrastructure_name' => 'nullable|string',
         ]);
+
+        $usesExistingComponent = in_array($validated['project_activity'], ['Change Request', 'Additional Requirements', 'Review/Enhancement'], true);
+        if ($validated['project_source'] === 'System Development') {
+            $request->validate($usesExistingComponent
+                ? ['existing_system_id' => 'required|exists:systems,id']
+                : ['custom_system_name' => 'required|string|max:255']);
+        }
+        if ($validated['project_source'] === 'Infrastructure Development') {
+            $request->validate($usesExistingComponent
+                ? ['existing_infrastructure_id' => 'required|exists:infrastructure_components,id']
+                : ['custom_infrastructure_name' => 'required|string|max:255']);
+        }
 
         $project = Project::create([
             ...$validated,
@@ -243,10 +303,35 @@ class ProjectController extends Controller
             ]);
         }
 
+        $project->update([
+            'implementation_plan_status' => 'Pending Review',
+            'implementation_plan_review_comments' => null,
+            'implementation_plan_reviewed_at' => null,
+            'implementation_plan_reviewed_by' => null,
+        ]);
+
         return response()->json([
             'message' => 'Implementation plan created successfully',
             'activities' => $project->activities,
         ], Response::HTTP_CREATED);
+    }
+
+    /** Approve or return the implementation plan after a supervisor review. */
+    public function reviewImplementationPlan(Request $request, Project $project)
+    {
+        $validated = $request->validate([
+            'status' => 'required|in:Approved,Returned',
+            'comments' => 'nullable|string',
+        ]);
+
+        $project->update([
+            'implementation_plan_status' => $validated['status'],
+            'implementation_plan_review_comments' => $validated['comments'] ?? null,
+            'implementation_plan_reviewed_at' => now(),
+            'implementation_plan_reviewed_by' => Auth::id(),
+        ]);
+
+        return response()->json(['message' => 'Implementation plan reviewed.', 'project' => $project]);
     }
 
     /**
@@ -280,13 +365,13 @@ class ProjectController extends Controller
     public function submitRequirementsTracker(Request $request, Project $project)
     {
         $validated = $request->validate([
-            'requirements' => 'required|array|min:1',
+            'requirements' => 'sometimes|array',
             'requirements.*.requirement_description' => 'required|string',
             'requirements.*.planned_start_date' => 'required|date',
             'requirements.*.planned_end_date' => 'required|date|after:requirements.*.planned_start_date',
         ]);
 
-        foreach ($validated['requirements'] as $requirement) {
+        foreach ($validated['requirements'] ?? [] as $requirement) {
             RequirementComponent::create([
                 'project_id' => $project->id,
                 ...$requirement,
@@ -294,8 +379,11 @@ class ProjectController extends Controller
             ]);
         }
 
-        // Create tracker record
-        $project->requirementsTracker()->create([
+        if (!$project->requirements()->exists()) {
+            return response()->json(['message' => 'Add at least one requirement before submitting the tracker.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        $project->requirementsTracker()->updateOrCreate([], [
             'status' => 'Submitted',
             'submitted_by' => Auth::id(),
             'submitted_at' => now(),
@@ -317,7 +405,12 @@ class ProjectController extends Controller
             'approval_comments' => 'nullable|string',
         ]);
 
-        $project->requirementsTracker()->update([
+        $tracker = $project->requirementsTracker;
+        if (!$tracker) {
+            return response()->json(['message' => 'The requirements tracker has not been submitted yet.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        $tracker->update([
             'status' => $validated['status'],
             'approved_by' => Auth::id(),
             'approved_at' => now(),
@@ -418,6 +511,12 @@ class ProjectController extends Controller
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
+        if ($project->implementation_plan_status !== 'Approved') {
+            return response()->json([
+                'message' => 'The implementation plan must be approved by the Analyst Supervisor before execution.',
+            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
         $project->update(['phase' => 'Execution']);
 
         return response()->json([
@@ -454,6 +553,24 @@ class ProjectController extends Controller
         if ($pendingRequirements > 0) {
             return response()->json([
                 'message' => 'All requirements must be marked as Completed.',
+            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        if ($project->requirements()->where('review_status', '!=', 'Approved')->exists()) {
+            return response()->json([
+                'message' => 'Every requirement component must be approved by the Analyst Supervisor before closure.',
+            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        if (!$project->requirements()->exists()) {
+            return response()->json([
+                'message' => 'At least one requirement must be submitted and completed before closure.',
+            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        if ($project->requirements()->whereNull('test_score')->exists()) {
+            return response()->json([
+                'message' => 'UAT test scores are required for every requirement before closure.',
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
@@ -517,6 +634,12 @@ class ProjectController extends Controller
             return response()->json([
                 'message' => 'All required Closure phase documents must be approved.',
                 'missing_documents' => $missingDocs,
+            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        if ($project->documents()->where('phase', 'Closure')->where('status', '!=', 'Approved')->exists()) {
+            return response()->json([
+                'message' => 'All submitted closure documents must be reviewed and approved before closure.',
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
@@ -601,6 +724,16 @@ class ProjectController extends Controller
      */
     public function attestByDICT(Request $request, Project $project)
     {
+        if (!$project->manager_attested) {
+            return response()->json([
+                'message' => 'A Manager (SDMM or IDMM) must attest before DICT.',
+            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        if ($project->dict_attested) {
+            return response()->json(['message' => 'DICT has already attested this project.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
         $validated = $request->validate([
             'attestation_details' => 'nullable|string',
         ]);

@@ -9,6 +9,8 @@ class ProjectRequirementsTracker extends Model
 {
     use HasFactory;
 
+    protected $table = 'project_requirements_tracker';
+
     protected $fillable = [
         'project_id',
         'status',

@@ -12,6 +12,23 @@ use Illuminate\Support\Facades\Storage;
 class DocumentController extends Controller
 {
     /**
+     * Upload a new document (web alias used by routes/web.php).
+     */
+    public function upload(Request $request, Project $project)
+    {
+        $request->merge(['project_id' => $project->id]);
+
+        return $this->store($request);
+    }
+
+    public function storeForProject(Request $request, Project $project)
+    {
+        $request->merge(['project_id' => $project->id]);
+
+        return $this->store($request);
+    }
+
+    /**
      * Get all documents for a project
      */
     public function index(Project $project, Request $request)
@@ -23,6 +40,14 @@ class DocumentController extends Controller
         }
         if ($request->has('status')) {
             $query->where('status', $request->status);
+        }
+        if ($request->filled('search')) {
+            $term = $request->string('search')->toString();
+            $query->where(function ($documents) use ($term) {
+                $documents->where('document_type', 'like', "%{$term}%")
+                    ->orWhere('original_filename', 'like', "%{$term}%")
+                    ->orWhere('reviewer_comments', 'like', "%{$term}%");
+            });
         }
 
         return response()->json([
@@ -44,6 +69,16 @@ class DocumentController extends Controller
         ]);
 
         $project = Project::find($validated['project_id']);
+
+        abort_unless($project->phase === $validated['phase'], 422, 'Documents must be uploaded in the current project phase.');
+
+        $role = Auth::user()->role;
+        $isInitiation = $validated['phase'] === 'Initiation';
+        abort_unless(
+            ($isInitiation && $role === 'supervisor') || (!$isInitiation && in_array($role, ['analyst', 'supervisor'], true)),
+            403,
+            'Your role cannot upload documents for this phase.'
+        );
 
         $filePath = $request->file('file')->store('documents/' . $project->id, 'private');
 
@@ -79,7 +114,7 @@ class DocumentController extends Controller
     {
         $validated = $request->validate([
             'status' => 'required|in:Approved,Returned',
-            'reviewer_comments' => 'nullable|string',
+            'reviewer_comments' => 'nullable|string|required_if:status,Returned',
         ]);
 
         $document->update([

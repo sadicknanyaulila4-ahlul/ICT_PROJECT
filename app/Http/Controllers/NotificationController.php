@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Notification;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
 class NotificationController extends Controller
 {
@@ -13,7 +12,8 @@ class NotificationController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Notification::where('user_id', Auth::id());
+        $userId = $request->user()?->id;
+        $query = Notification::where('user_id', $userId);
 
         // Filter by status
         if ($request->has('status')) {
@@ -29,7 +29,7 @@ class NotificationController extends Controller
 
         return response()->json([
             'notifications' => $notifications,
-            'unread_count' => Notification::where('user_id', Auth::id())
+            'unread_count' => Notification::where('user_id', $userId)
                 ->where('status', 'Unread')
                 ->count(),
         ]);
@@ -38,10 +38,10 @@ class NotificationController extends Controller
     /**
      * Mark notification as read
      */
-    public function markAsRead(Notification $notification)
+    public function markAsRead(Request $request, Notification $notification)
     {
         // Check if notification belongs to authenticated user
-        if ($notification->user_id !== Auth::id()) {
+        if ($notification->user_id !== $request->user()?->id) {
             return response()->json([
                 'message' => 'Unauthorized',
             ], 403);
