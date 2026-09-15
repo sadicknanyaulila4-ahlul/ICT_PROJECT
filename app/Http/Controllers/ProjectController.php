@@ -131,6 +131,17 @@ class ProjectController extends Controller
      */
     public function store(Request $request)
     {
+        // Badilisha empty-string kuwa null ili nullable validation ifanye kazi
+        $request->merge([
+            'budget' => $request->input('budget') === '' || $request->input('budget') === null ? null : $request->input('budget'),
+            'description' => $request->input('description') === '' ? null : $request->input('description'),
+            'existing_system_id' => $request->input('existing_system_id') === '' || $request->input('existing_system_id') === null ? null : $request->input('existing_system_id'),
+            'existing_infrastructure_id' => $request->input('existing_infrastructure_id') === '' || $request->input('existing_infrastructure_id') === null ? null : $request->input('existing_infrastructure_id'),
+            'custom_system_name' => $request->input('custom_system_name') === '' ? null : $request->input('custom_system_name'),
+            'custom_infrastructure_name' => $request->input('custom_infrastructure_name') === '' ? null : $request->input('custom_infrastructure_name'),
+            'implementation_team_names' => $request->input('implementation_team_names') === '' ? null : $request->input('implementation_team_names'),
+        ]);
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',

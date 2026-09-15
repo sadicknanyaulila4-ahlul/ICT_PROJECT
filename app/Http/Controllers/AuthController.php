@@ -6,6 +6,8 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
 use Inertia\Inertia;
 
 class AuthController extends Controller
@@ -111,6 +113,55 @@ class AuthController extends Controller
         $request->session()->regenerateToken();
 
         return redirect('/');
+    }
+
+    public function showForgotPassword()
+    {
+        return Inertia::render('Auth/ForgotPassword');
+    }
+
+    public function sendResetLink(Request $request)
+    {
+        $request->validate(['email' => 'required|email']);
+
+        $status = Password::sendResetLink($request->only('email'));
+
+        if ($status === Password::RESET_LINK_SENT) {
+            return back()->with('success', 'Tumekutumia link ya ku-reset password kwenye email yako (angalia pia log kama MAIL_MAILER=log).');
+        }
+
+        return back()->withErrors(['email' => 'Email hii haikupatikana kwenye mfumo.']);
+    }
+
+    public function showResetPassword(string $token)
+    {
+        return Inertia::render('Auth/ResetPassword', [
+            'token' => $token,
+            'email' => request()->query('email', ''),
+        ]);
+    }
+
+    public function resetPassword(Request $request)
+    {
+        $request->validate([
+            'token' => 'required',
+            'email' => 'required|email',
+            'password' => 'required|min:8|confirmed',
+        ]);
+
+        $status = Password::reset(
+            $request->only('email', 'password', 'password_confirmation', 'token'),
+            function (User $user, string $password) {
+                // 'hashed' cast itahash yenyewe - usiweke Hash::make hapa
+                $user->forceFill(['password' => $password])->save();
+            }
+        );
+
+        if ($status === Password::PASSWORD_RESET) {
+            return redirect()->route('login')->with('success', 'Password imeresetwa. Sasa sign in.');
+        }
+
+        return back()->withErrors(['email' => 'Token si sahihi au ime-expire. Omba link mpya.']);
     }
 
     /**

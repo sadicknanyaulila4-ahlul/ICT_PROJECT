@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Button, Card, Descriptions, Form, Input, List, Select, Tag, Typography, message } from 'antd';
-import { MailOutlined, PhoneOutlined, SendOutlined } from '@ant-design/icons';
-import { usePage } from '@inertiajs/react';
+import { Button, Card, Descriptions, Form, Input, List, Modal, Select, Space, Tag, Typography, message } from 'antd';
+import { MailOutlined, PhoneOutlined, SendOutlined, MessageOutlined } from '@ant-design/icons';
+import { router, useForm, usePage } from '@inertiajs/react';
 import PortalLayout from '@/Layouts/PortalLayout';
 
 const contacts = [
@@ -16,7 +16,59 @@ const faqs = [
     { q: 'Document upload inagoma?', a: 'Hakikisha uko kwenye phase sahihi ya project na file ni PDF/DOC/XLS/PNG chini ya 10MB.' },
 ];
 
-export default function Support() {
+const statusColor = { Open: 'red', 'In Progress': 'gold', Resolved: 'green', Closed: 'default' };
+
+function AdminTickets({ tickets = [] }) {
+    const [open, setOpen] = useState(false);
+    const [active, setActive] = useState(null);
+    const replyForm = useForm({ admin_reply: '', status: 'Resolved' });
+    const openReply = (ticket) => {
+        setActive(ticket);
+        replyForm.setData({ admin_reply: ticket.admin_reply || '', status: ticket.status === 'Open' ? 'Resolved' : ticket.status });
+        setOpen(true);
+    };
+    const submitReply = () => {
+        if (!active) return;
+        router.post(`/support/${active.id}/reply`, replyForm.data, {
+            preserveScroll: true,
+            onSuccess: () => { setOpen(false); setActive(null); replyForm.reset(); message.success('Jibu limetumwa kwa user.'); router.reload({ only: ['tickets'] }); },
+            onError: () => message.error('Rekebisha jibu kabla ya kutuma.'),
+        });
+    };
+    return (
+        <>
+            <div className="page-heading">
+                <div>
+                    <Typography.Text className="eyebrow">SUPPORT DESK — ADMIN</Typography.Text>
+                    <Typography.Title level={1}>Changamoto za watumiaji</Typography.Title>
+                    <Typography.Paragraph type="secondary">Unaona changamoto zote za users (pamoja na Need Help). Huna sehemu ya kuandika changamoto — kazi yako ni kujibu kupitia Reply.</Typography.Paragraph>
+                </div>
+                <Tag color="red">{tickets.length} tickets</Tag>
+            </div>
+            <Card className="dashboard-table" title="Challenges zilizotumwa na users">
+                <List dataSource={tickets} locale={{ emptyText: 'Hakuna changamoto kwa sasa.' }} renderItem={(t) => (
+                    <List.Item actions={[<Button key="reply" type="primary" icon={<MessageOutlined />} onClick={() => openReply(t)}>Reply / Tuma solution</Button>]}>
+                        <List.Item.Meta title={<>{t.subject} <Tag color={statusColor[t.status] || 'blue'}>{t.status}</Tag> <Tag>{t.priority}</Tag> {t.is_need_help ? <Tag color="purple">Need Help</Tag> : null}</>} description={<><div><strong>{t.name}</strong> · {t.email} · {t.category} · {t.created_at}</div><div style={{ marginTop: 6 }}>{t.message}</div>{t.admin_reply && <div style={{ marginTop: 8, background: '#f6ffed', border: '1px solid #b7eb8f', padding: 8, borderRadius: 6 }}><strong>Jibu lako:</strong> {t.admin_reply}</div>}</>} />
+                    </List.Item>
+                )} />
+            </Card>
+            <Modal title={active ? `Reply — ${active.subject}` : 'Reply'} open={open} onCancel={() => setOpen(false)} onOk={submitReply} okText="Tuma solution" confirmLoading={replyForm.processing} destroyOnClose>
+                {active && <div style={{ marginBottom: 12 }}><div><strong>From:</strong> {active.name} ({active.email})</div><div style={{ marginTop: 6 }}>{active.message}</div></div>}
+                <Form layout="vertical">
+                    <Form.Item label="Solution / Jibu kwa user" validateStatus={replyForm.errors.admin_reply ? 'error' : ''} help={replyForm.errors.admin_reply}>
+                        <Input.TextArea rows={4} value={replyForm.data.admin_reply} onChange={(e) => replyForm.setData('admin_reply', e.target.value)} placeholder="Andika solution hapa..." />
+                    </Form.Item>
+                    <Form.Item label="Status">
+                        <Select value={replyForm.data.status} onChange={(v) => replyForm.setData('status', v)} options={['Open', 'In Progress', 'Resolved', 'Closed'].map((s) => ({ value: s, label: s }))} />
+                    </Form.Item>
+                </Form>
+            </Modal>
+        </>
+    );
+}
+
+
+export default function Support({ tickets = [], isAdmin = false }) {
     const user = usePage().props.auth?.user;
     const [form] = Form.useForm();
     const [sent, setSent] = useState([]);

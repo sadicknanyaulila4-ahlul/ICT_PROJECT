@@ -38,8 +38,14 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'name' => config('app.name'),
+            'locale' => app()->getLocale(),
+            'flash' => [
+                'success' => fn () => $request->session()->get('success'),
+                'error' => fn () => $request->session()->get('error'),
+            ],
             'auth' => [
-                'user' => $request->user(),
+                // Hakikisha profile_photo_url inakuja kila wakati header ione picha
+                'user' => $request->user() ? $request->user()->append('profile_photo_url') : null,
             ],
         ];
     }

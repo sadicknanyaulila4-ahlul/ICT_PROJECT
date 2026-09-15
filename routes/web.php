@@ -7,9 +7,30 @@ use App\Http\Controllers\ReportController;
 use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\SupportController;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Route;
 
+// Lugha: Kiswahili / English
+Route::post('/language', function (\Illuminate\Http\Request $request) {
+    $locale = $request->input('locale', 'en');
+    if (! in_array($locale, ['en', 'sw'], true)) {
+        $locale = 'en';
+    }
+    $request->session()->put('locale', $locale);
+
+    return back();
+})->name('language.switch');
+
+// Need Help (kabla ya login) - challenge kwa admin
+Route::get('/need-help', [SupportController::class, 'needHelp'])->name('need.help');
+Route::post('/need-help', [SupportController::class, 'submitNeedHelp'])->name('need.help.submit');
+
+// Forgot / Reset password
+Route::get('/forgot-password', [AuthController::class, 'showForgotPassword'])->name('password.request');
+Route::post('/forgot-password', [AuthController::class, 'sendResetLink'])->name('password.email');
+Route::get('/reset-password/{token}', [AuthController::class, 'showResetPassword'])->name('password.reset');
+Route::post('/reset-password', [AuthController::class, 'resetPassword'])->name('password.update');
 Route::redirect('/', '/login')->name('home');
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'webLogin'])->name('web.login');
@@ -21,7 +42,9 @@ Route::patch('/profile', [ProfileController::class, 'update'])->middleware('role
 Route::post('/profile/photo', [ProfileController::class, 'updatePhoto'])->middleware('role:admin,analyst,supervisor,manager,dict')->name('profile.photo.update');
 Route::delete('/profile/photo', [ProfileController::class, 'destroyPhoto'])->middleware('role:admin,analyst,supervisor,manager,dict')->name('profile.photo.destroy');
 Route::get('/notifications', fn () => Inertia::render('Notifications'))->middleware('role:admin,analyst,supervisor,manager,dict')->name('notifications');
-Route::get('/support', fn () => Inertia::render('Support'))->middleware('role:admin,analyst,supervisor,manager,dict')->name('support');
+Route::get('/support', [SupportController::class, 'index'])->middleware('role:admin,analyst,supervisor,manager,dict')->name('support');
+Route::post('/support', [SupportController::class, 'store'])->middleware('role:analyst,supervisor,manager,dict')->name('support.store');
+Route::post('/support/{ticket}/reply', [SupportController::class, 'reply'])->middleware('role:admin')->name('support.reply');
 Route::get('/admin/users', [AdminUserController::class, 'index'])->middleware('role:admin')->name('admin.users.index');
 Route::post('/admin/users', [AdminUserController::class, 'store'])->middleware('role:admin')->name('admin.users.store');
 Route::patch('/admin/users/{user}', [AdminUserController::class, 'update'])->middleware('role:admin')->name('admin.users.update');
