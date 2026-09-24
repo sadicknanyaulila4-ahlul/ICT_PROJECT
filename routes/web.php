@@ -31,9 +31,14 @@ Route::get('/forgot-password', [AuthController::class, 'showForgotPassword'])->n
 Route::post('/forgot-password', [AuthController::class, 'sendResetLink'])->name('password.email');
 Route::get('/reset-password/{token}', [AuthController::class, 'showResetPassword'])->name('password.reset');
 Route::post('/reset-password', [AuthController::class, 'resetPassword'])->name('password.update');
-Route::redirect('/', '/login')->name('home');
+Route::get('/', function () {
+    return Inertia::render('Home');
+})->name('home');
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'webLogin'])->name('web.login');
+Route::get('/register', function () {
+    return Inertia::render('Auth/Register');
+})->name('register');
 Route::post('/logout', [AuthController::class, 'webLogout'])->name('web.logout');
 Route::middleware('auth')->group(function () {
 Route::get('/dashboard', [ProjectController::class, 'index'])->middleware('role:admin,analyst,supervisor,manager,dict')->name('dashboard');

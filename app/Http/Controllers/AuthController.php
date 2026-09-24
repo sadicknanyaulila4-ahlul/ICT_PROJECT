@@ -12,23 +12,19 @@ use Inertia\Inertia;
 
 class AuthController extends Controller
 {
-    /**
-     * Register a new user
-     */
     public function register(Request $request)
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8|confirmed',
-            'role' => 'required|in:analyst,supervisor,manager,dict',
         ]);
 
         $user = User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
-            'password' => $validated['password'],
-            'role' => $validated['role'],
+            'password' => Hash::make($validated['password']),
+            'role' => 'analyst',
         ]);
 
         $token = $user->createToken('api-token')->plainTextToken;
@@ -40,9 +36,26 @@ class AuthController extends Controller
         ], Response::HTTP_CREATED);
     }
 
-    /**
-     * Login user
-     */
+    public function webRegister(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users',
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        User::create([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'password' => Hash::make($validated['password']),
+            'role' => 'analyst',
+        ]);
+
+        return redirect()
+            ->route('login')
+            ->with('success', 'Account created successfully. You can now sign in.');
+    }
+
     public function login(Request $request)
     {
         $credentials = $request->validate([
@@ -50,20 +63,22 @@ class AuthController extends Controller
             'password' => 'required|string',
         ]);
 
-        if (! Auth::attempt($credentials)) {
+        if (!Auth::attempt($credentials)) {
             return response()->json([
                 'message' => 'Invalid credentials',
             ], Response::HTTP_UNAUTHORIZED);
         }
 
         $user = Auth::user();
-        if (! $user instanceof User) {
+
+        if (!$user instanceof User) {
             Auth::logout();
 
             return response()->json([
                 'message' => 'Invalid credentials',
             ], Response::HTTP_UNAUTHORIZED);
         }
+
         $token = $user->createToken('api-token')->plainTextToken;
 
         return response()->json([
@@ -85,17 +100,22 @@ class AuthController extends Controller
             'password' => 'required|string',
         ]);
 
-        if (! Auth::attempt($credentials, $request->boolean('remember'))) {
-            return back()->withErrors(['email' => 'The email or password is incorrect.']);
+        if (!Auth::attempt($credentials, $request->boolean('remember'))) {
+            return back()->withErrors([
+                'email' => 'The email or password is incorrect.',
+            ]);
         }
 
         $request->session()->regenerate();
 
         $user = Auth::user();
-        if (! $user instanceof User) {
+
+        if (!$user instanceof User) {
             Auth::logout();
 
-            return back()->withErrors(['email' => 'The email or password is incorrect.']);
+            return back()->withErrors([
+                'email' => 'The email or password is incorrect.',
+            ]);
         }
 
         return $this->redirectForRole($user);
@@ -109,6 +129,7 @@ class AuthController extends Controller
     public function webLogout(Request $request)
     {
         Auth::logout();
+
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
@@ -122,15 +143,24 @@ class AuthController extends Controller
 
     public function sendResetLink(Request $request)
     {
-        $request->validate(['email' => 'required|email']);
+        $request->validate([
+            'email' => 'required|email',
+        ]);
 
-        $status = Password::sendResetLink($request->only('email'));
+        $status = Password::sendResetLink(
+            $request->only('email')
+        );
 
         if ($status === Password::RESET_LINK_SENT) {
-            return back()->with('success', 'Tumekutumia link ya ku-reset password kwenye email yako (angalia pia log kama MAIL_MAILER=log).');
+            return back()->with(
+                'success',
+                'Tumekutumia link ya ku-reset password kwenye email yako (angalia pia log kama MAIL_MAILER=log).'
+            );
         }
 
-        return back()->withErrors(['email' => 'Email hii haikupatikana kwenye mfumo.']);
+        return back()->withErrors([
+            'email' => 'Email hii haikupatikana kwenye mfumo.',
+        ]);
     }
 
     public function showResetPassword(string $token)
@@ -150,26 +180,34 @@ class AuthController extends Controller
         ]);
 
         $status = Password::reset(
-            $request->only('email', 'password', 'password_confirmation', 'token'),
+            $request->only(
+                'email',
+                'password',
+                'password_confirmation',
+                'token'
+            ),
             function (User $user, string $password) {
-                // 'hashed' cast itahash yenyewe - usiweke Hash::make hapa
-                $user->forceFill(['password' => $password])->save();
+                $user->forceFill([
+                    'password' => Hash::make($password),
+                ])->save();
             }
         );
 
         if ($status === Password::PASSWORD_RESET) {
-            return redirect()->route('login')->with('success', 'Password imeresetwa. Sasa sign in.');
+            return redirect()
+                ->route('login')
+                ->with('success', 'Password imeresetwa. Sasa sign in.');
         }
 
-        return back()->withErrors(['email' => 'Token si sahihi au ime-expire. Omba link mpya.']);
+        return back()->withErrors([
+            'email' => 'Token si sahihi au ime-expire. Omba link mpya.',
+        ]);
     }
 
-    /**
-     * Logout user
-     */
     public function logout(Request $request)
     {
         $user = $request->user();
+
         if ($user instanceof User) {
             $user->currentAccessToken()?->delete();
         }

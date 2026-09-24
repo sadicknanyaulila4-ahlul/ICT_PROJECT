@@ -23,7 +23,7 @@ export default function Register({ systems = [], infrastructure = [] }) {
     const handleSubmit = () => {
         post('/project', {
             onSuccess: () => message.success('Project registered successfully!'),
-            onError: () => message.error('There was an error.'),
+            onError: () => message.error('Please correct the highlighted fields and try again.'),
         });
     };
 
@@ -32,18 +32,35 @@ export default function Register({ systems = [], infrastructure = [] }) {
         return ['Change Request', 'Additional Requirements', 'Review/Enhancement'].includes(activity);
     };
 
+    const fieldError = (field) => errors[field] ? { validateStatus: 'error', help: errors[field] } : {};
+
+    const handleSourceChange = (value) => {
+        setData('project_source', value);
+        setData('existing_system_id', null);
+        setData('existing_infrastructure_id', null);
+        setData('custom_system_name', '');
+        setData('custom_infrastructure_name', '');
+    };
+
+    const handleActivityChange = (value) => {
+        setData('project_activity', value);
+        setData('existing_system_id', null);
+        setData('existing_infrastructure_id', null);
+        setData('custom_system_name', '');
+        setData('custom_infrastructure_name', '');
+    };
+
     return (
         <PortalLayout activeKey="initiation">
             <Card title="Register New Project">
                 <Form layout="vertical" onFinish={handleSubmit}>
-                    <Form.Item label="Project Name" required>
+                    <Form.Item label="Project Name" required {...fieldError('name')}>
                         <Input value={data.name} onChange={e => setData('name', e.target.value)} />
-                        {errors.name && <div style={{ color: 'red' }}>{errors.name}</div>}
                     </Form.Item>
                     <Form.Item label="Description">
                         <Input.TextArea value={data.description} onChange={e => setData('description', e.target.value)} />
                     </Form.Item>
-                    <Form.Item label="Budget">
+                    <Form.Item label="Budget" {...fieldError('budget')}>
                         <Input type="number" value={data.budget} onChange={e => setData('budget', e.target.value)} />
                     </Form.Item>
                     <Form.Item label="Implementation Team" required>
@@ -52,12 +69,11 @@ export default function Register({ systems = [], infrastructure = [] }) {
                             <Option value="External">External</Option>
                         </Select>
                     </Form.Item>
-                    <Form.Item label="Team Member Names" required>
+                    <Form.Item label="Team Member Names" required {...fieldError('implementation_team_names')}>
                         <Input value={data.implementation_team_names} onChange={e => setData('implementation_team_names', e.target.value)} placeholder="Enter names separated by commas" />
-                        {errors.implementation_team_names && <div style={{ color: 'red' }}>{errors.implementation_team_names}</div>}
                     </Form.Item>
                     <Form.Item label="Project Source" required>
-                        <Select value={data.project_source} onChange={val => setData('project_source', val)}>
+                        <Select value={data.project_source} onChange={handleSourceChange}>
                             <Option value="System Development">System Development</Option>
                             <Option value="Infrastructure Development">Infrastructure Development</Option>
                         </Select>
@@ -69,7 +85,7 @@ export default function Register({ systems = [], infrastructure = [] }) {
                         </Select>
                     </Form.Item>
                     <Form.Item label="Project Activity" required>
-                        <Select value={data.project_activity} onChange={val => setData('project_activity', val)}>
+                        <Select value={data.project_activity} onChange={handleActivityChange}>
                             <Option value="New Implementation (Major)">New Implementation (Major)</Option>
                             <Option value="New Implementation (Minor)">New Implementation (Minor)</Option>
                             <Option value="Change Request">Change Request</Option>
@@ -83,7 +99,7 @@ export default function Register({ systems = [], infrastructure = [] }) {
                     {data.project_source === 'System Development' && (
                         <>
                             {isExistingRequired() ? (
-                                <Form.Item label="Existing System" required>
+                                <Form.Item label="Existing System" required {...fieldError('existing_system_id')}>
                                     <Select
                                         value={data.existing_system_id}
                                         onChange={val => setData('existing_system_id', val)}
@@ -91,10 +107,9 @@ export default function Register({ systems = [], infrastructure = [] }) {
                                     >
                                         {systems.map(sys => <Option key={sys.id} value={sys.id}>{sys.name}</Option>)}
                                     </Select>
-                                    {errors.existing_system_id && <div style={{ color: 'red' }}>{errors.existing_system_id}</div>}
                                 </Form.Item>
                             ) : (
-                                <Form.Item label="New System Name">
+                                <Form.Item label="New System Name" required {...fieldError('custom_system_name')}>
                                     <Input value={data.custom_system_name} onChange={e => setData('custom_system_name', e.target.value)} />
                                 </Form.Item>
                             )}
@@ -104,7 +119,7 @@ export default function Register({ systems = [], infrastructure = [] }) {
                     {data.project_source === 'Infrastructure Development' && (
                         <>
                             {isExistingRequired() ? (
-                                <Form.Item label="Existing Infrastructure" required>
+                                <Form.Item label="Existing Infrastructure" required {...fieldError('existing_infrastructure_id')}>
                                     <Select
                                         value={data.existing_infrastructure_id}
                                         onChange={val => setData('existing_infrastructure_id', val)}
@@ -112,10 +127,9 @@ export default function Register({ systems = [], infrastructure = [] }) {
                                     >
                                         {infrastructure.map(inf => <Option key={inf.id} value={inf.id}>{inf.name}</Option>)}
                                     </Select>
-                                    {errors.existing_infrastructure_id && <div style={{ color: 'red' }}>{errors.existing_infrastructure_id}</div>}
                                 </Form.Item>
                             ) : (
-                                <Form.Item label="New Infrastructure Name">
+                                <Form.Item label="New Infrastructure Name" required {...fieldError('custom_infrastructure_name')}>
                                     <Input value={data.custom_infrastructure_name} onChange={e => setData('custom_infrastructure_name', e.target.value)} />
                                 </Form.Item>
                             )}

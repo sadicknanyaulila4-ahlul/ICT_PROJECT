@@ -1,8 +1,15 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Button, Card, Form, Input, Typography, message } from 'antd';
 import { LockOutlined, MailOutlined } from '@ant-design/icons';
 import { Link, router, useForm, usePage } from '@inertiajs/react';
 import { strings, getLocale } from '../../i18n';
+
+const backgroundImages = [
+    '/images/building-1.jpg',
+    '/images/building-2.jpg',
+    '/images/building-3.jpg',
+    '/images/building-4.jpg',
+];
 
 export function LanguageSwitcher() {
     const locale = usePage().props.locale || getLocale();
@@ -19,14 +26,22 @@ export function LanguageSwitcher() {
 }
 
 export default function Login({ errors = {} }) {
+    const [currentImage, setCurrentImage] = useState(0);
     const pageLocale = usePage().props.locale || getLocale();
     const t = strings(pageLocale);
     const flash = usePage().props.flash || {};
     const { data, setData, post, processing } = useForm({ email: '', password: '', remember: false });
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setCurrentImage((previous) => (previous + 1) % backgroundImages.length);
+        }, 5000);
+
+        return () => clearInterval(interval);
+    }, []);
     useEffect(() => { if (flash.success) message.success(flash.success); }, [flash.success]);
     const submit = () => post('/login', { onError: () => message.error(t.checkDetails) });
     return (
-        <main className="auth-page">
+        <main className="auth-page slideshow-auth-page" style={{ backgroundImage: `url('${backgroundImages[currentImage]}')` }}>
             <section className="auth-hero">
                 <img className="auth-logo" src="/images/nssf%20logo.png" alt="NSSF logo" />
                 <Typography.Text className="auth-kicker">ICT MANAGEMENT SYSTEM (ICTMS)</Typography.Text>
@@ -58,7 +73,11 @@ export default function Login({ errors = {} }) {
                     <p className="account-notice">{t.noAccount}</p>
                 </Card>
             </section>
+            <div className="auth-slide-indicators" aria-label="Background image slides">
+                {backgroundImages.map((_, index) => (
+                    <span key={index} className={index === currentImage ? 'active' : ''}></span>
+                ))}
+            </div>
         </main>
     );
 }
-

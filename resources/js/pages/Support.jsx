@@ -71,15 +71,33 @@ function AdminTickets({ tickets = [] }) {
 export default function Support({ tickets = [], isAdmin = false }) {
     const user = usePage().props.auth?.user;
     const [form] = Form.useForm();
-    const [sent, setSent] = useState([]);
+    const challengeForm = useForm({
+        category: 'Login / Account',
+        priority: 'Normal',
+        subject: '',
+        message: '',
+    });
     const submitChallenge = (values) => {
-        const ticket = { id: Date.now(), ...values, name: user?.name || 'User', date: new Date().toLocaleString() };
-        setSent([ticket, ...sent]);
-        try { localStorage.setItem(`support-tickets-${user?.email || 'guest'}`, JSON.stringify([ticket, ...sent])); } catch { /* best-effort */ }
-        window.location.href = `mailto:support@nssf.go.tz?subject=${encodeURIComponent(`[ICTMS] ${values.category} — ${values.subject}`)}&body=${encodeURIComponent(`Jina: ${ticket.name}\nCategory: ${values.category}\nUzito: ${values.priority}\n\n${values.message}`)}`;
-        form.resetFields();
-        message.success('Changamoto yako imetumwa kwenye Support Desk.');
+        challengeForm.transform(() => values);
+        challengeForm.post('/support', {
+            preserveScroll: true,
+            onSuccess: () => {
+                form.resetFields();
+                challengeForm.reset();
+                message.success('Changamoto yako imetumwa kwenye Support Desk.');
+            },
+            onError: () => message.error('Rekebisha taarifa za changamoto kabla ya kutuma.'),
+        });
     };
+
+    if (isAdmin) {
+        return (
+            <PortalLayout activeKey="support">
+                <AdminTickets tickets={tickets} />
+            </PortalLayout>
+        );
+    }
+
     return (
         <PortalLayout activeKey="support">
             <div className="page-heading">
@@ -108,7 +126,7 @@ export default function Support({ tickets = [], isAdmin = false }) {
                 </Form>
             </Card>
             <Card className="dashboard-table" title="Changamoto ulizotuma" style={{ marginTop: 20 }}>
-                <List dataSource={sent} locale={{ emptyText: 'Hujatuma changamoto yoyote bado.' }} renderItem={(t) => <List.Item><List.Item.Meta title={<>{t.subject} <Tag color="green">Sent</Tag> <Tag>{t.priority}</Tag></>} description={<>{t.category} · {t.date}<br />{t.message}</>} /></List.Item>} />
+                <List dataSource={tickets} locale={{ emptyText: 'Hujatuma changamoto yoyote bado.' }} renderItem={(t) => <List.Item><List.Item.Meta title={<>{t.subject} <Tag color={statusColor[t.status] || 'blue'}>{t.status}</Tag> <Tag>{t.priority}</Tag></>} description={<>{t.category} · {t.created_at}<br />{t.message}{t.admin_reply ? <div style={{ marginTop: 8, background: '#f6ffed', border: '1px solid #b7eb8f', padding: 8, borderRadius: 6 }}><strong>Jibu la Admin:</strong> {t.admin_reply}</div> : null}</>} /></List.Item>} />
             </Card>
             <Card title="Wasiliana nasi" style={{ marginTop: 20 }}>
                 <List
