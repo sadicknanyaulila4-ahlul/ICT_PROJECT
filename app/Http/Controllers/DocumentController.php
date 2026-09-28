@@ -137,6 +137,7 @@ class DocumentController extends Controller
     {
         /** @var \Illuminate\Filesystem\FilesystemAdapter $disk */
         $disk = Storage::disk('private');
+        abort_unless($disk->exists($document->file_path), 404, 'The document file could not be found.');
 
         return $disk->download(
             $document->file_path,

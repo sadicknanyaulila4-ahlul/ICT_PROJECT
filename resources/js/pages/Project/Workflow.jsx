@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { router, usePage } from '@inertiajs/react';
-import { Alert, Button, Card, Col, DatePicker, Form, Input, Row, Select, Space, Steps, Table, Tag, Typography, Upload, message } from 'antd';
+import { Alert, Button, Card, Col, DatePicker, Form, Input, Modal, Row, Select, Space, Steps, Table, Tag, Typography, Upload, message } from 'antd';
 import { CheckCircleOutlined, CloudUploadOutlined, DownloadOutlined, PlusOutlined, SendOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import PortalLayout from '@/Layouts/PortalLayout';
@@ -32,20 +32,25 @@ async function request(path, method = 'POST', body) {
     if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
         Object.assign(headers, await xsrfHeaders());
     }
-    const response = await fetch(`/api${path}`, {
+    const browserPath = path.startsWith('/web/') ? path.slice(4) : `/api${path}`;
+    const response = await fetch(browserPath, {
         method,
         credentials: 'same-origin',
         headers,
         body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,
     });
     const payload = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(payload.message || 'The action could not be completed.');
+    if (!response.ok) {
+        const error = new Error(payload.message || `The action could not be completed (HTTP ${response.status}).`);
+        error.payload = payload;
+        throw error;
+    }
     return payload;
 }
 
 function refresh(success) {
     message.success(success);
-    router.reload({ only: ['project'] });
+    router.reload({ preserveScroll: true });
 }
 
 function DocumentPanel({ project, phase, role, perms = {} }) {
@@ -62,7 +67,7 @@ function DocumentPanel({ project, phase, role, perms = {} }) {
             data.append('document_type', type);
             data.append('phase', phase);
             data.append('file', file);
-            await request(`/projects/${project.id}/documents`, 'POST', data);
+            await request(`/web/project/${project.id}/documents`, 'POST', data);
             onSuccess?.();
             refresh('Document uploaded for review.');
         } catch (error) {
@@ -74,12 +79,14 @@ function DocumentPanel({ project, phase, role, perms = {} }) {
         const comments = status === 'Returned' ? window.prompt('Enter comments for the analyst:') : '';
         if (status === 'Returned' && !comments) return message.warning('Comments are required when returning a document.');
         try {
-            await request(`/documents/${document.id}/review`, 'PATCH', { status, reviewer_comments: comments });
+            await request(`/web/project/documents/${document.id}/review`, 'PATCH', { status, reviewer_comments: comments });
             refresh(`Document ${status.toLowerCase()}.`);
         } catch (error) { message.error(error.message); }
     };
 
+    const missingDocuments = (project.missing_documents || []).filter((documentType) => phaseDocuments.includes(documentType));
     return <Card className="mt-4" title={`${phase} documents`} extra={canUpload && phaseDocuments.length > 0 ? <Space><Select value={type} onChange={setType} options={phaseDocuments.map((value) => ({ value, label: value }))} style={{ minWidth: 220 }} /><Upload customRequest={upload} showUploadList={false} accept=".pdf,.doc,.docx,.xls,.xlsx"><Button icon={<CloudUploadOutlined />}>Upload</Button></Upload></Space> : <Tag>View only</Tag>}>
+        {missingDocuments.length > 0 && <Alert type="warning" showIcon message="Required documents still missing or not approved" description={missingDocuments.join(', ')} />}
         <Table size="small" rowKey="id" pagination={false} dataSource={documents.filter((document) => document.phase === phase)} locale={{ emptyText: 'No documents uploaded yet.' }} columns={[
             { title: 'Document', dataIndex: 'document_type' },
             { title: 'File', dataIndex: 'original_filename' },
@@ -95,7 +102,7 @@ function AddActivity({ project }) {
     const [form] = Form.useForm();
     const submit = async (values) => {
         try {
-            await request(`/projects/${project.id}/activities`, 'POST', {
+            await request(`/web/project/${project.id}/activities`, 'POST', {
                 ...values,
                 planned_start_date: values.planned_start_date.format('YYYY-MM-DD'),
                 planned_end_date: values.planned_end_date.format('YYYY-MM-DD'),
@@ -111,7 +118,7 @@ function AddRequirement({ project }) {
     const [form] = Form.useForm();
     const submit = async (values) => {
         try {
-            await request(`/projects/${project.id}/requirements`, 'POST', {
+            await request(`/web/projects/${project.id}/requirements`, 'POST', {
                 ...values,
                 planned_start_date: values.planned_start_date.format('YYYY-MM-DD'),
                 planned_end_date: values.planned_end_date.format('YYYY-MM-DD'),
@@ -126,7 +133,7 @@ function AddRequirement({ project }) {
 function Activities({ project, role, perms = {} }) {
     const save = async (activity, dates) => {
         try {
-            await request(`/activities/${activity.id}/progress`, 'POST', dates);
+            await request(`/web/project/activities/${activity.id}/progress`, 'POST', dates);
             refresh('Activity progress saved.');
         } catch (error) { message.error(error.message); }
     };
@@ -143,16 +150,24 @@ function Activities({ project, role, perms = {} }) {
 }
 
 function PlanActivityActions({ activity }) {
-    const rename = async () => {
-        const activity_name = window.prompt('Activity name:', activity.activity_name);
-        if (!activity_name || activity_name === activity.activity_name) return;
-        try { await request(`/activities/${activity.id}`, 'PATCH', { activity_name }); refresh('Implementation plan updated; Supervisor review is required again.'); } catch (error) { message.error(error.message); }
+    const [open, setOpen] = useState(false);
+    const [form] = Form.useForm();
+    const save = async (values) => {
+        try {
+            await request(`/web/project/activities/${activity.id}`, 'PATCH', {
+                ...values,
+                planned_start_date: values.planned_start_date.format('YYYY-MM-DD'),
+                planned_end_date: values.planned_end_date.format('YYYY-MM-DD'),
+            });
+            setOpen(false);
+            refresh('Implementation plan updated; Supervisor review is required again.');
+        } catch (error) { message.error(error.message); }
     };
     const remove = async () => {
         if (!window.confirm(`Remove “${activity.activity_name}”?`)) return;
-        try { await request(`/activities/${activity.id}`, 'DELETE'); refresh('Activity removed; Supervisor review is required again.'); } catch (error) { message.error(error.message); }
+        try { await request(`/web/project/activities/${activity.id}`, 'DELETE'); refresh('Activity removed; Supervisor review is required again.'); } catch (error) { message.error(error.message); }
     };
-    return <Space><Button size="small" onClick={rename}>Edit</Button><Button size="small" danger onClick={remove}>Delete</Button></Space>;
+    return <><Space><Button size="small" onClick={() => setOpen(true)}>Edit</Button><Button size="small" danger onClick={remove}>Delete</Button></Space><Modal title="Edit implementation activity" open={open} onCancel={() => setOpen(false)} onOk={() => form.submit()} confirmLoading={false}><Form form={form} layout="vertical" initialValues={{ ...activity, planned_start_date: dayjs(activity.planned_start_date), planned_end_date: dayjs(activity.planned_end_date) }} onFinish={save}><Form.Item name="activity_name" label="Activity" rules={[{ required: true }]}><Input /></Form.Item><Form.Item name="expected_deliverable" label="Expected deliverable"><Input /></Form.Item><Row gutter={12}><Col span={12}><Form.Item name="planned_start_date" label="Planned start" rules={[{ required: true }]}><DatePicker className="w-full" /></Form.Item></Col><Col span={12}><Form.Item name="planned_end_date" label="Planned end" rules={[{ required: true }]}><DatePicker className="w-full" /></Form.Item></Col></Row><Form.Item name="responsible_person" label="Responsible person"><Input /></Form.Item></Form></Modal></>;
 }
 
 function ActivityUpdate({ activity, onSave }) {
@@ -164,7 +179,7 @@ function ActivityUpdate({ activity, onSave }) {
 
 function Requirements({ project, role, perms = {} }) {
     const save = async (requirement, values) => {
-        try { await request(`/requirements/${requirement.id}/update`, 'POST', values); refresh('Requirement updated.'); } catch (error) { message.error(error.message); }
+        try {         await request(`/web/requirements/${requirement.id}/update`, 'POST', values); refresh('Requirement updated.'); } catch (error) { message.error(error.message); }
     };
     const canUpdate = perms.can_update_progress ?? role === 'analyst';
     const canReviewReq = perms.can_review_requirements ?? role === 'supervisor';
@@ -174,14 +189,15 @@ function Requirements({ project, role, perms = {} }) {
         ...(canUpdate ? [{ title: 'Update', render: (_, row) => <RequirementUpdate requirement={row} onSave={save} /> }] : []),
         ...(canReviewReq ? [{ title: 'Review', render: (_, row) => <RequirementReview requirement={row} /> }] : []),
     ];
-    return <Card className="mt-4" title="Requirements traceability matrix"><Table rowKey="id" size="small" dataSource={project.requirements || []} columns={columns} pagination={false} /></Card>;
+    const requirements = project.requirements || [];
+    return <Card className="mt-4" title="Requirements traceability matrix">{requirements.length === 0 && <Alert type="warning" showIcon message="No requirements have been submitted yet." description={role === 'analyst' ? 'Add at least one requirement from the approved SRS, then record its actual dates and UAT result. The Supervisor must approve it before Closure.' : 'The assigned Analyst must add at least one requirement from the approved SRS before this project can move to Closure.'} />}<Table className="mt-4" rowKey="id" size="small" dataSource={requirements} columns={columns} pagination={false} /></Card>;
 }
 
 function RequirementReview({ requirement }) {
     const review = async (status) => {
         const review_comments = status === 'Returned' ? window.prompt('Enter comments for the analyst:') : '';
         if (status === 'Returned' && !review_comments) return message.warning('Comments are required when returning a requirement.');
-        try { await request(`/requirements/${requirement.id}/review`, 'PATCH', { status, review_comments }); refresh(`Requirement ${status.toLowerCase()}.`); } catch (error) { message.error(error.message); }
+        try { await request(`/web/requirements/${requirement.id}/review`, 'PATCH', { status, review_comments }); refresh(`Requirement ${status.toLowerCase()}.`); } catch (error) { message.error(error.message); }
     };
     if (requirement.review_status === 'Approved') return 'Approved';
     return <Space><Button size="small" type="primary" onClick={() => review('Approved')}>Approve</Button><Button size="small" danger onClick={() => review('Returned')}>Return</Button></Space>;
@@ -209,13 +225,24 @@ function ProjectDetails({ project, canViewFinancials }) {
     return <Card className="mt-4" title="Project details"><Typography.Paragraph type="secondary">{project.description || 'No project description was provided during registration.'}</Typography.Paragraph><Row gutter={[16, 12]}>{items.map((item) => <Col xs={12} md={6} key={item.label}><Typography.Text type="secondary">{item.label}</Typography.Text><br /><strong>{item.value}</strong></Col>)}</Row></Card>;
 }
 
-function Assignment({ project, analysts }) {
+function Assignment({ project, analysts, supervisors = [], canAssignSupervisor = false }) {
     const [analyst, setAnalyst] = useState(project.assigned_analyst_id || null);
+    const [supervisor, setSupervisor] = useState(project.supervisor_id || null);
     const assign = async () => {
         if (!analyst) return message.warning('Select an Analyst first.');
-        try { await request(`/projects/${project.id}/assign-analyst`, 'POST', { assigned_analyst_id: analyst }); refresh('Project assigned to Analyst.'); } catch (error) { message.error(error.message); }
+        try { await request(`/web/project/${project.id}/assign-analyst`, 'POST', { assigned_analyst_id: analyst }); refresh('Project assigned to Analyst.'); } catch (error) { message.error(error.message); }
     };
-    return <Card className="mt-4" title="Supervisor task: assign Analyst"><Space wrap><Select value={analyst} onChange={setAnalyst} placeholder="Select Analyst" options={analysts.map((user) => ({ value: user.id, label: `${user.name} (${user.email})` }))} style={{ minWidth: 260 }} /><Button type="primary" onClick={assign}>Assign / re-assign</Button></Space></Card>;
+    const assignSupervisor = async () => {
+        if (!supervisor) return message.warning('Select a Supervisor first.');
+        try { await request(`/web/project/${project.id}/assign-supervisor`, 'POST', { supervisor_id: supervisor }); refresh('Project assigned to Supervisor.'); } catch (error) { message.error(error.message); }
+    };
+    return <Card className="mt-4" title={canAssignSupervisor ? 'Admin task: assign project team' : 'Supervisor task: assign Analyst'}>
+        <Space wrap>
+            {canAssignSupervisor && <><Select value={supervisor} onChange={setSupervisor} placeholder="Select Supervisor" options={supervisors.map((user) => ({ value: user.id, label: `${user.name} (${user.email})` }))} style={{ minWidth: 260 }} /><Button onClick={assignSupervisor}>Assign Supervisor</Button></>}
+            <Select value={analyst} onChange={setAnalyst} placeholder="Select Analyst" options={analysts.map((user) => ({ value: user.id, label: `${user.name} (${user.email})` }))} style={{ minWidth: 260 }} />
+            <Button type="primary" onClick={assign}>Assign / re-assign Analyst</Button>
+        </Space>
+    </Card>;
 }
 
 function ChangeRequestForm({ project }) {
@@ -257,7 +284,7 @@ function AttestationPanel({ project, role, perms = {} }) {
     const canAttestManager = perms.can_attest_manager ?? role === 'manager';
     const canAttestDict = perms.can_attest_dict ?? role === 'dict';
     const attest = async () => {
-        const path = canAttestManager ? `/projects/${project.id}/attest-manager` : `/projects/${project.id}/attest-dict`;
+        const path = canAttestManager ? `/web/project/${project.id}/attest-manager` : `/web/project/${project.id}/attest-dict`;
         const body = canAttestManager ? { attestation_role: managerRole } : {};
         try { await request(path, 'POST', body); refresh('Attestation recorded.'); } catch (error) { message.error(error.message); }
     };
@@ -265,20 +292,26 @@ function AttestationPanel({ project, role, perms = {} }) {
     return <Card className="mt-4" title={canAttestManager ? 'Manager task: attest project details' : 'DICT task: attest Manager-approved details'}><Space wrap>{canAttestManager && <Select value={managerRole} onChange={setManagerRole} options={['SDMM', 'IDMM'].map((value) => ({ value, label: value }))} style={{ width: 120 }} />}<Button type="primary" onClick={attest}>Attest</Button><Typography.Text type="secondary">Manager: {project.manager_attested ? 'attested' : 'pending'} · DICT: {project.dict_attested ? 'attested' : 'pending'}</Typography.Text></Space></Card>;
 }
 
-export default function Workflow({ project, analysts = [] }) {
+export default function Workflow({ project, analysts = [], supervisors = [] }) {
     const role = usePage().props.auth?.user?.role;
     const phase = project?.phase || 'Initiation';
     const perms = project?.permissions || {};
     const can = (key, fallbackRoles = []) => perms[key] ?? fallbackRoles.includes(role);
     const current = ['Initiation', 'Planning', 'Execution', 'Closure'].indexOf(phase);
     const action = async (path, label, body) => {
-        try { await request(path, 'POST', body); refresh(label); } catch (error) { message.error(error.message); }
+        try {
+            await request(path, 'POST', body);
+            refresh(label);
+        } catch (error) {
+            const missing = error.payload?.missing_documents;
+            message.error(missing?.length ? `${error.message} Missing: ${missing.join(', ')}` : error.message);
+        }
     };
     const buttons = useMemo(() => {
-        if (phase === 'Initiation' && can('can_transition', ['supervisor'])) return <Button type="primary" icon={<SendOutlined />} onClick={() => action(`/projects/${project.id}/transition-to-planning`, 'Project moved to Planning.')}>Move to planning</Button>;
-        if (phase === 'Planning' && can('can_transition', ['supervisor'])) return <Space><Button onClick={() => action(`/projects/${project.id}/activities/plan/review`, 'Implementation plan approved.', { status: 'Approved' })}>Approve plan</Button><Button type="primary" icon={<SendOutlined />} onClick={() => action(`/projects/${project.id}/transition-to-execution`, 'Project moved to Execution.')}>Move to execution</Button></Space>;
-        if (phase === 'Execution' && can('can_transition', ['supervisor'])) return <Button type="primary" icon={<SendOutlined />} onClick={() => action(`/projects/${project.id}/transition-to-closure`, 'Project moved to Closure.')}>Move to closure</Button>;
-        if (phase === 'Closure' && can('can_close', ['supervisor'])) return <Button type="primary" icon={<CheckCircleOutlined />} onClick={() => action(`/projects/${project.id}/close`, 'Project closed successfully.')}>Close project</Button>;
+        if (phase === 'Initiation' && can('can_transition', ['supervisor'])) return <Button type="primary" icon={<SendOutlined />} onClick={() => action(`/web/project/${project.id}/transition-to-planning`, 'Project moved to Planning.')}>Move to planning</Button>;
+        if (phase === 'Planning' && can('can_transition', ['supervisor'])) return <Space><Button onClick={() => action(`/web/project/${project.id}/activities/plan/review`, 'Implementation plan approved.', { status: 'Approved' })}>Approve plan</Button><Button danger onClick={() => { const comments = window.prompt('Enter comments for the analyst:'); if (comments) action(`/web/project/${project.id}/activities/plan/review`, 'Implementation plan returned to Analyst.', { status: 'Returned', comments }); }}>Return plan</Button><Button type="primary" icon={<SendOutlined />} onClick={() => action(`/web/project/${project.id}/transition-to-execution`, 'Project moved to Execution.')}>Move to execution</Button></Space>;
+        if (phase === 'Execution' && can('can_transition', ['supervisor'])) return <Button type="primary" icon={<SendOutlined />} onClick={() => action(`/web/project/${project.id}/transition-to-closure`, 'Project moved to Closure.')}>Move to closure</Button>;
+        if (phase === 'Closure' && can('can_close', ['supervisor'])) return <Button type="primary" icon={<CheckCircleOutlined />} onClick={() => action(`/web/project/${project.id}/close`, 'Project closed successfully.')}>Close project</Button>;
         return null;
     }, [phase, project?.id]);
 
@@ -288,13 +321,22 @@ export default function Workflow({ project, analysts = [] }) {
 
     return <PortalLayout activeKey="dashboard"><div className="page-heading"><div><Typography.Text className="eyebrow">PROJECT MANAGEMENT</Typography.Text><Typography.Title level={1}>{project.name}</Typography.Title><Typography.Paragraph type="secondary">Project #{project.id} · {project.project_source} · {project.project_activity}</Typography.Paragraph></div><Space><Tag color={project.status === 'Completed' ? 'green' : 'blue'}>{project.status}</Tag>{buttons}</Space></div><Card><Steps current={current} items={['Initiation', 'Planning', 'Execution', 'Closure'].map((title, index) => ({ title, status: index < current ? 'finish' : index === current ? 'process' : 'wait' }))} /></Card>
         <ProjectDetails project={project} canViewFinancials={can('can_view_financials', ['supervisor', 'manager', 'dict', 'admin'])} />
-        {phase === 'Initiation' && can('can_assign', ['supervisor']) && <Assignment project={project} analysts={analysts} />}
+        {phase === 'Planning' && role !== 'supervisor' && <Alert className="mt-4" type="warning" showIcon message="Supervisor action required" description="Only the assigned Project Supervisor can approve the plan or move this project to Execution." />}
+        {phase === 'Planning' && <Alert className="mt-4" type={project.implementation_plan_status === 'Approved' ? 'success' : project.implementation_plan_status === 'Returned' ? 'error' : 'info'} message={`Implementation plan: ${project.implementation_plan_status || 'Draft'}`} description={project.implementation_plan_review_comments || 'Analyst adds activities and submits them for Supervisor review. Required planning documents must also be approved before moving to Execution.'} showIcon />}
+        {phase === 'Initiation' && can('can_assign', ['supervisor', 'admin']) && <Assignment project={project} analysts={analysts} supervisors={supervisors} canAssignSupervisor={role === 'admin'} />}
         {phase === 'Planning' && can('can_plan', ['analyst']) && <AddActivity project={project} />} {phase === 'Planning' && <Activities project={project} role={role} perms={perms} />}
         {phase === 'Execution' && can('can_change', ['analyst']) && <AddRequirement project={project} />} {phase === 'Execution' && <><Activities project={project} role={role} perms={perms} /><Requirements project={project} role={role} perms={perms} />{can('can_change', ['analyst']) && <ChangeRequestForm project={project} />}<ChangeRequests project={project} role={role} perms={perms} /></>}
         {phase === 'Closure' && <><Requirements project={project} role={role} perms={perms} /><LessonsPanel project={project} role={role} perms={perms} /></>}
         <DocumentPanel project={project} phase={phase} role={role} perms={perms} />
         <AttestationPanel project={project} role={role} perms={perms} />
-        {(phase === 'Closure' || can('can_view_financials', ['supervisor', 'manager', 'dict', 'admin'])) && <Card className="mt-4"><Button icon={<DownloadOutlined />} href={`/api/projects/${project.id}/report`}>Download project data</Button></Card>}
+        {(phase === 'Closure' || can('can_view_financials', ['supervisor', 'manager', 'dict', 'admin'])) && <Card className="mt-4" title="Project downloads"><Space wrap>
+            <Button icon={<DownloadOutlined />} href={`/api/projects/${project.id}/report/download`}>Project data (JSON)</Button>
+            {['supervisor', 'manager', 'dict'].includes(role) && <>
+                <Button icon={<DownloadOutlined />} href={`/project/${project.id}/tracker/excel`}>Tracker (CSV)</Button>
+                <Button icon={<DownloadOutlined />} href={`/project/${project.id}/tracker/pdf`}>Tracker (PDF)</Button>
+            </>}
+            {phase === 'Closure' && <Button icon={<DownloadOutlined />} href={`/api/projects/${project.id}/lessons-learned/report/download`}>Lessons learned (JSON)</Button>}
+        </Space></Card>}
         <Alert className="mt-4" type="info" showIcon message="Every button on this page saves to the project database. Phase changes are still protected by the required document, approval, activity, and UAT checks." />
     </PortalLayout>;
 }

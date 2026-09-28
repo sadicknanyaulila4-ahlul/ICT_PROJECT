@@ -10,7 +10,11 @@ class RoleMiddleware
 {
     public function handle(Request $request, Closure $next, string ...$roles): Response
     {
-        abort_unless($request->user()?->hasRole($roles), 403);
+        abort_unless(
+            $request->user()?->hasRole($roles),
+            403,
+            'This action requires one of these roles: '.implode(', ', $roles).'.',
+        );
 
         return $next($request);
     }

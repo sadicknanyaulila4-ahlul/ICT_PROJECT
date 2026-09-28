@@ -138,8 +138,8 @@ export default function Support({ tickets = [], isAdmin = false }) {
                     )}
                 />
                 <Descriptions column={1} bordered style={{ marginTop: 16 }}>
-                    <Descriptions.Item label="Email"><Button type="link" icon={<MailOutlined />} href="mailto:support@nssf.go.tz">support@nssf.go.tz</Button></Descriptions.Item>
-                    <Descriptions.Item label="Simu"><Button type="link" icon={<PhoneOutlined />} href="tel:+255220000000">+255 22 000 0000</Button></Descriptions.Item>
+                    <Descriptions.Item label="Email"><Button type="link" icon={<MailOutlined />} href="mailto:abuu@gmail.com">abuu@gmail.com</Button></Descriptions.Item>
+                    <Descriptions.Item label="Simu"><Button type="link" icon={<PhoneOutlined />} href="tel:+255624833805">+255 624 833 805</Button></Descriptions.Item>
                 </Descriptions>
             </Card>
             <Card title="Maswali yanayoulizwa mara nyingi" style={{ marginTop: 20 }}>

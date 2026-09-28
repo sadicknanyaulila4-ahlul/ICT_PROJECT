@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\ProjectActivityController;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\RequirementComponentController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\ChangeRequestController;
@@ -36,6 +37,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/{project}/close', [ProjectController::class, 'closeProject'])->middleware('role:supervisor')->name('projects.closeProject');
         Route::get('/{project}/progress', [ProjectController::class, 'getProjectProgress'])->name('projects.progress');
         Route::get('/{project}/report', [ProjectController::class, 'getProjectReport'])->name('projects.report');
+        Route::get('/{project}/report/download', [ReportController::class, 'exportProjectData'])->name('projects.report.download');
 
         // Project Approvals & Attestations
         Route::post('/{project}/approve-supervisor', [ProjectController::class, 'approveBySupervisor'])->middleware('role:supervisor')->name('projects.approveSupervisor');
@@ -69,6 +71,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/{project}/lessons-learned', [LessonsLearnedController::class, 'index'])->name('lessonsLearned.index');
         Route::post('/{project}/lessons-learned', [LessonsLearnedController::class, 'storeForProject'])->middleware('role:analyst')->name('lessonsLearned.store');
         Route::get('/{project}/lessons-learned/report', [LessonsLearnedController::class, 'generateReport'])->name('lessonsLearned.report');
+        Route::get('/{project}/lessons-learned/report/download', [ReportController::class, 'exportLessonsLearned'])->name('lessonsLearned.report.download');
 
         // Project Attestations
         Route::get('/{project}/attestations', [ProjectAttestationController::class, 'index'])->name('attestations.index');

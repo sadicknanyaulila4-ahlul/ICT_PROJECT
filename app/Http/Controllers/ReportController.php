@@ -3,6 +3,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Project;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Str;
 
 class ReportController extends Controller
 {
@@ -32,5 +33,51 @@ class ReportController extends Controller
         $activities = $project->activities;
         $pdf = Pdf::loadView('pdf.tracker', ['project' => $project, 'activities' => $activities]);
         return $pdf->download('project_tracker.pdf');
+    }
+
+    public function exportProjectData(Project $project)
+    {
+        $project->load([
+            'activities',
+            'requirements',
+            'documents',
+            'changeRequests',
+            'lessonsLearned',
+            'attestations',
+        ]);
+        $filename = (Str::slug($project->name) ?: "project-{$project->id}").'-project-data.json';
+        $data = [
+            'project' => $project,
+            'activities' => $project->activities,
+            'requirements' => $project->requirements,
+            'documents' => $project->documents,
+            'change_requests' => $project->changeRequests,
+            'lessons_learned' => $project->lessonsLearned,
+            'attestations' => $project->attestations,
+        ];
+
+        return response()->streamDownload(
+            fn () => print json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR),
+            $filename,
+            ['Content-Type' => 'application/json; charset=UTF-8'],
+        );
+    }
+
+    public function exportLessonsLearned(Project $project)
+    {
+        $lessons = $project->lessonsLearned()->where('status', 'Approved')->get();
+        $data = [
+            'project' => $project->name,
+            'total_lessons' => $lessons->count(),
+            'by_category' => $lessons->groupBy('category')->map->count(),
+            'lessons' => $lessons,
+        ];
+        $filename = (Str::slug($project->name) ?: "project-{$project->id}").'-lessons-learned.json';
+
+        return response()->streamDownload(
+            fn () => print json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR),
+            $filename,
+            ['Content-Type' => 'application/json; charset=UTF-8'],
+        );
     }
 }

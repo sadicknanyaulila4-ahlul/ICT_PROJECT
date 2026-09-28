@@ -1,13 +1,16 @@
 <?php
 use App\Http\Controllers\ProjectController;
+use App\Http\Controllers\ProjectActivityController;
 use App\Http\Controllers\ActivityController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\RequirementController;
+use App\Http\Controllers\RequirementComponentController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SupportController;
+use App\Models\Project;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Route;
 
@@ -39,6 +42,7 @@ Route::post('/login', [AuthController::class, 'webLogin'])->name('web.login');
 Route::get('/register', function () {
     return Inertia::render('Auth/Register');
 })->name('register');
+Route::post('/register', [AuthController::class, 'webRegister'])->name('web.register');
 Route::post('/logout', [AuthController::class, 'webLogout'])->name('web.logout');
 Route::middleware('auth')->group(function () {
 Route::get('/dashboard', [ProjectController::class, 'index'])->middleware('role:admin,analyst,supervisor,manager,dict')->name('dashboard');
@@ -63,7 +67,10 @@ Route::get('/project-workflow-preview', function () {
 })->middleware('role:analyst,supervisor')->name('project.workflow.preview');
 Route::get('/project-pages/documents', fn () => Inertia::render('Project/Modules', ['module' => 'documents']))->middleware('role:supervisor,manager,dict')->name('project.documents.preview');
 Route::get('/project-pages/changes', fn () => Inertia::render('Project/Modules', ['module' => 'changes']))->middleware('role:supervisor,manager,dict')->name('project.changes.preview');
-Route::get('/project-pages/reports', fn () => Inertia::render('Project/Modules', ['module' => 'reports']))->middleware('role:supervisor,manager,dict')->name('project.reports.preview');
+Route::get('/project-pages/reports', fn () => Inertia::render('Project/Modules', [
+    'module' => 'reports',
+    'projects' => Project::query()->orderBy('name')->get(['id', 'name', 'phase']),
+]))->middleware('role:supervisor,manager,dict')->name('project.reports.preview');
 Route::get('/project-pages/notifications', fn () => Inertia::render('Project/Modules', ['module' => 'notifications']))->middleware('role:analyst,supervisor,manager,dict')->name('project.notifications.preview');
 Route::get('/project-pages/closure', fn () => Inertia::render('Project/Modules', ['module' => 'closure']))->middleware('role:supervisor,manager,dict')->name('project.closure.preview');
 Route::get('/project-pages/{module}', function (string $module) {
@@ -77,12 +84,40 @@ Route::get('/project-pages/{module}', function (string $module) {
 Route::middleware(['auth', 'role:analyst,supervisor'])->group(function () {
 	Route::get('/project/register', [ProjectController::class, 'create'])->name('project.create');
 	Route::post('/project', [ProjectController::class, 'store'])->name('project.store');
+	Route::post('/project/{project}/assign-analyst', [ProjectController::class, 'assignAnalyst'])->middleware('role:admin,supervisor')->name('project.assign.analyst');
+	Route::post('/project/{project}/transition-to-planning', [ProjectController::class, 'transitionToPlanning'])->middleware('role:supervisor')->name('project.transition.planning');
+	Route::post('/project/{project}/transition-to-execution', [ProjectController::class, 'transitionToExecution'])->middleware('role:supervisor')->name('project.transition.execution');
+	Route::post('/project/{project}/transition-to-closure', [ProjectController::class, 'transitionToClosure'])->middleware('role:supervisor')->name('project.transition.closure');
+	Route::post('/project/{project}/activities/plan/review', [ProjectController::class, 'reviewImplementationPlan'])->middleware('role:supervisor')->name('project.activities.plan.review');
+	Route::post('/project/{project}/activities', [ProjectActivityController::class, 'storeForProject'])->middleware('role:analyst')->name('project.activities.store');
+	Route::patch('/project/activities/{activity}', [ProjectActivityController::class, 'update'])->middleware('role:analyst')->name('project.activities.update');
+	Route::delete('/project/activities/{activity}', [ProjectActivityController::class, 'destroy'])->middleware('role:analyst')->name('project.activities.destroy');
+	Route::post('/project/activities/{activity}/progress', [ProjectActivityController::class, 'recordProgress'])->middleware('role:analyst')->name('project.activities.progress');
+	Route::post('/project/{project}/documents', [DocumentController::class, 'storeForProject'])->middleware('role:analyst,supervisor')->name('project.documents.store');
+	Route::patch('/project/documents/{document}/review', [DocumentController::class, 'review'])->middleware('role:supervisor')->name('project.documents.review');
+	Route::post('/projects/{project}/requirements', [RequirementComponentController::class, 'storeForProject'])->middleware('role:analyst')->name('project.requirements.store');
+	Route::post('/requirements/{requirementComponent}/update', [RequirementComponentController::class, 'update'])->middleware('role:analyst')->name('project.requirements.update');
+	Route::patch('/requirements/{requirementComponent}/review', [RequirementComponentController::class, 'review'])->middleware('role:supervisor')->name('project.requirements.review');
 	Route::resource('projects.activities', ActivityController::class)->only(['index', 'store', 'update', 'destroy']);
 	Route::resource('projects.requirements', RequirementController::class)->only(['index', 'store', 'update', 'destroy']);
+});
+Route::middleware(['auth', 'role:admin'])->group(function () {
+	Route::post('/project/{project}/assign-supervisor', [ProjectController::class, 'assignSupervisor'])->name('project.assign.supervisor');
+	Route::post('/admin/projects/{project}/assign-supervisor', [AdminUserController::class, 'assignSupervisor'])->name('admin.project.assign.supervisor');
+	Route::post('/admin/projects/{project}/assign-analyst', [AdminUserController::class, 'assignAnalyst'])->name('admin.project.assign.analyst');
 });
 Route::middleware(['auth', 'role:supervisor,manager,dict'])->group(function () {
 	Route::get('/project/{project}/documents', [ProjectController::class, 'showDocuments'])->name('project.initiation.documents');
 	Route::post('/project/{project}/assign', [ProjectController::class, 'assignAnalyst'])->name('project.assign');
+});
+Route::middleware(['auth', 'role:supervisor'])->group(function () {
+	Route::post('/project/{project}/close', [ProjectController::class, 'closeProject'])->name('project.close');
+});
+Route::middleware(['auth', 'role:manager'])->group(function () {
+	Route::post('/project/{project}/attest-manager', [ProjectController::class, 'attestByManager'])->name('project.attest.manager');
+});
+Route::middleware(['auth', 'role:dict'])->group(function () {
+	Route::post('/project/{project}/attest-dict', [ProjectController::class, 'attestByDICT'])->name('project.attest.dict');
 });
 
 // Project Planning - Activities

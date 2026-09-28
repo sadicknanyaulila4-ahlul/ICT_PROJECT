@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\ProjectActivity;
 use App\Models\Project;
+use App\Models\ProjectActivity;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
@@ -11,10 +11,14 @@ class ProjectActivityController extends Controller
 {
     public function storeForProject(Request $request, Project $project)
     {
+        abort_unless($project->phase === 'Planning', 422, 'Activities can only be added during the Planning phase.');
+        abort_unless($project->assigned_analyst_id === $request->user()?->id, 403, 'Only the assigned Analyst can update this implementation plan.');
+
         $request->merge(['project_id' => $project->id]);
 
         return $this->store($request);
     }
+
     /**
      * Get all activities for a project
      */
@@ -66,6 +70,9 @@ class ProjectActivityController extends Controller
      */
     public function update(Request $request, ProjectActivity $activity)
     {
+        abort_unless($activity->project->phase === 'Planning', 422, 'Activities can only be updated during the Planning phase.');
+        abort_unless($activity->project->assigned_analyst_id === $request->user()?->id, 403, 'Only the assigned Analyst can update this implementation plan.');
+
         $validated = $request->validate([
             'activity_name' => 'sometimes|string|max:255',
             'expected_deliverable' => 'sometimes|nullable|string',
@@ -108,6 +115,7 @@ class ProjectActivityController extends Controller
                 'message' => 'Activities can only be deleted during the Planning phase.',
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
+        abort_unless($activity->project->assigned_analyst_id === request()->user()?->id, 403, 'Only the assigned Analyst can update this implementation plan.');
 
         $activity->delete();
 
@@ -128,8 +136,11 @@ class ProjectActivityController extends Controller
      */
     public function recordProgress(Request $request, ProjectActivity $activity)
     {
+        abort_unless($activity->project->phase === 'Execution', 422, 'Activity progress can only be recorded during the Execution phase.');
+        abort_unless($activity->project->assigned_analyst_id === $request->user()?->id, 403, 'Only the assigned Analyst can record activity progress.');
+
         $validated = $request->validate([
-            'actual_start_date' => 'sometimes|required|date|before_or_equal:' . now()->toDateString(),
+            'actual_start_date' => 'sometimes|required|date|before_or_equal:'.now()->toDateString(),
             'actual_end_date' => 'sometimes|nullable|date|after_or_equal:actual_start_date|before_or_equal:today',
             'remarks' => 'sometimes|nullable|string',
             'attachments' => 'sometimes|nullable|array',

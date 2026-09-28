@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\Project;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -15,7 +16,34 @@ class AdminUserController extends Controller
         return Inertia::render('Admin/Users', [
             'users' => User::query()->select('id', 'name', 'email', 'role', 'created_at')->latest()->get(),
             'roles' => self::ROLES,
+            'projects' => Project::query()
+                ->with(['supervisor:id,name,email', 'analyst:id,name,email'])
+                ->select('id', 'name', 'phase', 'status', 'supervisor_id', 'assigned_analyst_id')
+                ->latest()
+                ->get(),
+            'supervisors' => User::query()->where('role', 'supervisor')->select('id', 'name', 'email')->orderBy('name')->get(),
+            'analysts' => User::query()->where('role', 'analyst')->select('id', 'name', 'email')->orderBy('name')->get(),
         ]);
+    }
+
+    public function assignSupervisor(Request $request, Project $project)
+    {
+        $data = $request->validate(['supervisor_id' => ['required', 'exists:users,id']]);
+        abort_unless(User::whereKey($data['supervisor_id'])->where('role', 'supervisor')->exists(), 422, 'The selected user must have the supervisor role.');
+
+        $project->update(['supervisor_id' => $data['supervisor_id']]);
+
+        return back()->with('success', 'Project Supervisor assigned successfully.');
+    }
+
+    public function assignAnalyst(Request $request, Project $project)
+    {
+        $data = $request->validate(['assigned_analyst_id' => ['required', 'exists:users,id']]);
+        abort_unless(User::whereKey($data['assigned_analyst_id'])->where('role', 'analyst')->exists(), 422, 'The selected user must have the analyst role.');
+
+        $project->update(['assigned_analyst_id' => $data['assigned_analyst_id'], 'status' => 'Ongoing']);
+
+        return back()->with('success', 'Project Analyst assigned successfully.');
     }
 
     public function store(Request $request)
