@@ -57,7 +57,11 @@ export default function Home() {
         <main className="landing-page">
             <header className="landing-header">
                 <div className="landing-brand">
-                    <span className="landing-mark">NS</span>
+                    <img
+                        src="/images/nssf%20logo.png"
+                        alt="NSSF logo"
+                        className="landing-logo"
+                    />
 
                     <span>
                         <strong>NSSF Portal</strong>
@@ -79,17 +83,26 @@ export default function Home() {
                     </Link>
                 </Space>
             </header>
-<section
-    className="landing-hero slideshow-hero"
-    style={{
-        backgroundImage: "url('/images/building-1.jpg')",
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
-        minHeight: '700px',
-    }}
->
+            <div className="auth-subbar">
+                <strong>Project Management</strong>
+            </div>
+            <section
+                className="landing-hero slideshow-hero"
+                style={{
+                    backgroundImage: `url("${backgroundImages[currentImage]}")`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    backgroundRepeat: 'no-repeat',
+                    minHeight: '700px',
+                }}
+            >
                 <div className="hero-overlay"></div>
+                <img
+                    src="/images/nssf%20logo.png"
+                    alt=""
+                    aria-hidden="true"
+                    className="hero-watermark"
+                />
 
                 <div className="hero-content">
                     <div className="hero-copy">
@@ -172,8 +185,8 @@ export default function Home() {
                     Everything your project team needs
                 </Typography.Title>
 
-                <Row gutter={[16, 16]}>
-                    {services.map((service) => (
+                <Row gutter={[22, 22]}>
+                    {services.map((service, index) => (
                         <Col
                             xs={24}
                             sm={12}
@@ -182,11 +195,19 @@ export default function Home() {
                         >
                             <Card
                                 className="service-card"
-                                bordered={false}
+                                variant="borderless"
                             >
-                                <span className="service-icon">
-                                    {service.icon}
+                                <span className="service-index-watermark" aria-hidden="true">
+                                    {String(index + 1).padStart(2, '0')}
                                 </span>
+                                <div className="service-card-top">
+                                    <span className="service-icon">
+                                        {service.icon}
+                                    </span>
+                                    <span className="service-step">
+                                        PHASE {String(index + 1).padStart(2, '0')}
+                                    </span>
+                                </div>
 
                                 <Typography.Title level={4}>
                                     {service.title}

@@ -23,9 +23,16 @@ export default function Register({ errors = {} }) {
         });
 
     return (
-        <main className="auth-page auth-register">
+        <main
+            className="auth-page auth-register"
+            style={{ backgroundImage: "url('/images/building-2.jpg')" }}
+        >
             <section className="auth-hero">
-                <div className="auth-logo">NS</div>
+                <img
+                    className="auth-logo"
+                    src="/images/nssf%20logo.png"
+                    alt="NSSF logo"
+                />
 
                 <Typography.Text className="auth-kicker">
                     NSSF PROJECT MANAGEMENT SYSTEM
@@ -51,8 +58,12 @@ export default function Register({ errors = {} }) {
                 </div>
             </section>
 
+            <div className="auth-subbar">
+                <strong>Project Management</strong>
+            </div>
+
             <section className="auth-panel">
-                <Card bordered={false}>
+                <Card className="register-card" variant="borderless">
                     <Typography.Title level={2}>
                         Create account
                     </Typography.Title>

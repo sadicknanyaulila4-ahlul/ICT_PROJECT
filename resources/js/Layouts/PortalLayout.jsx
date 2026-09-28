@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Badge, Button, Drawer, Dropdown, Layout, Menu, Tooltip, message } from 'antd';
-import { BellOutlined, CheckSquareOutlined, CloseCircleOutlined, DashboardOutlined, FileDoneOutlined, FileTextOutlined, FormOutlined, HomeOutlined, LogoutOutlined, MenuOutlined, MoonOutlined, ProjectOutlined, SunOutlined, TeamOutlined } from '@ant-design/icons';
+import { Badge, Button, Dropdown, Layout, Tooltip, message } from 'antd';
 import { Link, usePage } from '@inertiajs/react';
 
-const { Header, Sider, Content } = Layout;
+const { Header, Content } = Layout;
 
 function getInitialTheme() {
     if (typeof window === 'undefined') return 'light';
@@ -15,7 +14,6 @@ function getInitialTheme() {
 }
 
 export default function PortalLayout({ children, activeKey = 'dashboard' }) {
-    const [mobileOpen, setMobileOpen] = useState(false);
     const [theme, setTheme] = useState(getInitialTheme);
     const [unreadCount, setUnreadCount] = useState(0);
     const user = usePage().props.auth?.user;
@@ -35,7 +33,7 @@ export default function PortalLayout({ children, activeKey = 'dashboard' }) {
         let active = true;
         const loadUnreadCount = async () => {
             try {
-                const response = await fetch('/api/notifications', { credentials: 'same-origin', headers: { Accept: 'application/json' } });
+                const response = await fetch('/notifications/data', { credentials: 'same-origin', headers: { Accept: 'application/json' } });
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.message || 'Could not load notification count.');
                 if (active) setUnreadCount(data.unread_count || 0);
@@ -54,20 +52,44 @@ export default function PortalLayout({ children, activeKey = 'dashboard' }) {
             window.removeEventListener('ictms:notifications-updated', updateUnreadCount);
         };
     }, []);
-    const items = [
-        { key: 'dashboard', icon: <DashboardOutlined />, label: <Link href="/dashboard">Dashboard</Link> },
-        { key: 'support', icon: <HomeOutlined />, label: <Link href="/support">Support Desk</Link> },
-        { key: 'initiation', icon: <ProjectOutlined />, label: <Link href="/project/register">Initiate Registration</Link> },
-        { key: 'planning', icon: <FileTextOutlined />, label: <Link href="/dashboard?phase=Planning">Prepare Plan</Link> },
-        { key: 'execution', icon: <CheckSquareOutlined />, label: <Link href="/dashboard?phase=Execution">Prepare RTM</Link> },
-        { key: 'notifications', icon: <FundOutlined />, label: <Link href="/notifications">Notifications</Link> },
-        { key: 'documents', icon: <FileDoneOutlined />, label: <Link href="/project-pages/documents">Documents</Link> },
-        { key: 'closure', icon: <CloseCircleOutlined />, label: <Link href="/dashboard?phase=Closure">Close Project</Link> },
-        { key: 'reports', icon: <FormOutlined />, label: <Link href="/project-pages/reports">Reports</Link> },
-        { key: 'users', icon: <TeamOutlined />, label: <Link href="/admin/users">User Management</Link> },
+    const navigation = [
+        { key: 'dashboard', href: '/dashboard', label: 'Dashboard' },
+        { key: 'support', href: '/support', label: 'Support Desk' },
+        { key: 'initiation', href: '/project/register', label: 'Initiate Registration' },
+        { key: 'planning', href: '/dashboard?phase=Planning', label: 'Prepare Plan' },
+        { key: 'execution', href: '/dashboard?phase=Execution', label: 'Prepare RTM' },
+        { key: 'notifications', href: '/notifications', label: 'Notifications' },
+        { key: 'documents', href: '/project-pages/documents', label: 'Documents' },
+        { key: 'closure', href: '/dashboard?phase=Closure', label: 'Close Project' },
+        { key: 'reports', href: '/project-pages/reports', label: 'Reports' },
+        { key: 'users', href: '/admin/users', label: 'User Management' },
     ].filter((item) => allowed[item.key]?.includes(role));
-    const menu = <Menu mode="inline" selectedKeys={[['dashboard', 'support', 'users'].includes(activeKey) ? activeKey : 'dashboard']} items={items} onClick={() => setMobileOpen(false)} />;
-    const profileMenu = { items: [{ key: 'profile', label: <Link href="/profile">My profile</Link> }, { type: 'divider' }, { key: 'logout', icon: <LogoutOutlined />, label: <Link href="/logout" method="post" as="button" className="menu-logout">Sign out</Link> }] };
+    const profileMenu = { items: [{ key: 'profile', label: <Link href="/profile">My profile</Link> }, { type: 'divider' }, { key: 'logout', label: <Link href="/logout" method="post" as="button" className="menu-logout">Sign out</Link> }] };
 
-    return <Layout className={`ict-layout ${theme === 'dark' ? 'ict-dark-theme' : ''}`}><Header className="ict-header"><div className="ict-titlebar"><Link href="/dashboard" className="ict-brand"><img src="/images/nssf%20logo.png" alt="NSSF" /><strong>ICT MANAGEMENT SYSTEM (ICTMS)</strong></Link><div className="header-actions"><Tooltip title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}><Button aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`} shape="circle" type="text" icon={theme === 'dark' ? <SunOutlined /> : <MoonOutlined />} onClick={() => setTheme((current) => current === 'dark' ? 'light' : 'dark')} /></Tooltip><Tooltip title="Notifications"><Link href="/notifications"><Badge count={unreadCount} overflowCount={99}><Button aria-label={`Notifications${unreadCount ? ` (${unreadCount} unread)` : ''}`} shape="circle" type="text" icon={<BellOutlined />} /></Badge></Link></Tooltip><Dropdown menu={profileMenu} trigger={['click']}><button type="button" className="profile-trigger">{photoUrl ? <img src={photoUrl} alt={user?.name || 'profile'} className="avatar-img" /> : <span className="avatar">{initials}</span>}<span>{user?.name || 'User'}</span></button></Dropdown></div></div><div className="ict-subbar"><Link href="/dashboard" className="subbar-link"><strong>Project Management</strong></Link><Link href="/support" className="subbar-link"><span><HomeOutlined /> Support Desk</span></Link></div></Header><Layout className="ict-workspace"><Sider width={290} className="ict-sider" breakpoint="lg" collapsedWidth="0"><div className="role-select">{role === 'admin' ? 'System Administrator' : `Project ${role ? role[0].toUpperCase() + role.slice(1) : 'User'}`}<span>⌄</span></div>{menu}</Sider><Content className="ict-content"><div className="content-toolbar"><Button className="mobile-menu" icon={<MenuOutlined />} onClick={() => setMobileOpen(true)} /><div className="breadcrumb"><Link href="/dashboard" className="breadcrumb-link breadcrumb-home" title="Home"><HomeOutlined /><span>Home</span></Link><span className="breadcrumb-sep">›</span><Link href="/dashboard" className="breadcrumb-link"><ProjectOutlined /><strong>Project Management</strong></Link><span className="breadcrumb-sep">›</span><span className="breadcrumb-current">{activeKey === 'dashboard' ? 'Dashboard' : activeKey === 'support' ? 'Support Desk' : activeKey === 'users' ? 'User Management' : activeKey}</span></div></div>{children}</Content></Layout><Drawer title="ICTMS menu" placement="left" onClose={() => setMobileOpen(false)} open={mobileOpen} width={290}>{menu}</Drawer></Layout>;
+    return <Layout className={`ict-layout ${theme === 'dark' ? 'ict-dark-theme' : ''}`}>
+        <Header className="ict-header">
+            <div className="ict-titlebar">
+                <Link href="/dashboard" className="ict-brand"><img src="/images/nssf%20logo.png" alt="NSSF" /><strong>ICT MANAGEMENT SYSTEM (ICTMS)</strong></Link>
+                <div className="header-actions">
+                    <Tooltip title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}><Button type="text" onClick={() => setTheme((current) => current === 'dark' ? 'light' : 'dark')}>{theme === 'dark' ? 'Light theme' : 'Dark theme'}</Button></Tooltip>
+                    <Link href="/notifications" className="notification-link">Notifications <Badge count={unreadCount} overflowCount={99} /></Link>
+                    <Dropdown menu={profileMenu} trigger={['click']}><button type="button" className="profile-trigger">{photoUrl ? <img src={photoUrl} alt={user?.name || 'profile'} className="avatar-img" /> : <span className="avatar">{initials}</span>}<span>{user?.name || 'User'}</span></button></Dropdown>
+                </div>
+            </div>
+            <div className="ict-subbar">
+                <Link href="/dashboard" className="subbar-link"><strong>Project Management</strong></Link>
+                <nav className="ict-nav" aria-label="Main navigation">
+                    {navigation.map((item) => <Link key={item.key} href={item.href} className={`ict-nav-link${activeKey === item.key ? ' active' : ''}`} aria-current={activeKey === item.key ? 'page' : undefined}>
+                        <span>{item.label}</span>{item.key === 'notifications' && unreadCount > 0 && <Badge count={unreadCount} overflowCount={99} size="small" />}
+                    </Link>)}
+                </nav>
+            </div>
+        </Header>
+        <Content className="ict-content">
+            <div className="content-toolbar">
+                <div className="breadcrumb"><Link href="/dashboard" className="breadcrumb-link breadcrumb-home" title="Home">Home</Link><span className="breadcrumb-sep">›</span><Link href="/dashboard" className="breadcrumb-link"><strong>Project Management</strong></Link><span className="breadcrumb-sep">›</span><span className="breadcrumb-current">{activeKey === 'dashboard' ? 'Dashboard' : activeKey === 'support' ? 'Support Desk' : activeKey === 'users' ? 'User Management' : activeKey}</span></div>
+            </div>
+            {children}
+        </Content>
+    </Layout>;
 }

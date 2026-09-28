@@ -49,8 +49,11 @@ export default function Login({ errors = {} }) {
                 <Typography.Paragraph>{t.subtitle}</Typography.Paragraph>
                 <div className="auth-stat"><strong>{t.secure}</strong><span>{t.secureNote}</span></div>
             </section>
+            <div className="auth-subbar">
+                <strong>Project Management</strong>
+            </div>
             <section className="auth-panel">
-                <Card bordered={false}>
+                <Card className="login-card" variant="borderless">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <img className="auth-panel-logo" src="/images/nssf%20logo.png" alt="NSSF logo" style={{ width: 48 }} />
                         <LanguageSwitcher />

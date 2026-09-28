@@ -40,8 +40,8 @@ export default function Modules({ module = 'documents', project = null, rows = [
                 <Space wrap>
                     <Button icon={<DownloadOutlined />} href={`/project/${item.id}/tracker/excel`}>Tracker CSV</Button>
                     <Button icon={<DownloadOutlined />} href={`/project/${item.id}/tracker/pdf`}>Tracker PDF</Button>
-                    <Button icon={<DownloadOutlined />} href={`/api/projects/${item.id}/report/download`}>Project data</Button>
-                    <Button icon={<DownloadOutlined />} href={`/api/projects/${item.id}/lessons-learned/report/download`}>Lessons learned</Button>
+                    <Button icon={<DownloadOutlined />} href={`/project/${item.id}/report/download`}>Project data</Button>
+                    <Button icon={<DownloadOutlined />} href={`/project/${item.id}/lessons-learned/report/download`}>Lessons learned</Button>
                 </Space>
             </div>) : <Typography.Text type="secondary">No projects are available to export.</Typography.Text>}
         </Card> : <Card title={project?.name || 'Project records'} extra={<Input.Search allowClear placeholder="Search records" onChange={(event) => setSearch(event.target.value)} style={{ width: 220 }} />}>

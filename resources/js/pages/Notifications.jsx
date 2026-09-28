@@ -14,7 +14,7 @@ export default function Notifications() {
     const load = useCallback(async () => {
         setLoading(true);
         try {
-            const response = await fetch(`/api/notifications?page=${page}`, {
+            const response = await fetch(`/notifications/data?page=${page}`, {
                 credentials: 'same-origin',
                 headers: { Accept: 'application/json' },
             });
@@ -38,10 +38,8 @@ export default function Notifications() {
     const markRead = async (notification) => {
         setMarkingIds((ids) => [...ids, notification.id]);
         try {
-            const csrfResponse = await fetch('/sanctum/csrf-cookie', { credentials: 'same-origin' });
-            if (!csrfResponse.ok) throw new Error('Could not prepare a secure notification update.');
             const xsrf = decodeURIComponent((document.cookie.match(/(?:^|; )XSRF-TOKEN=([^;]*)/) || [])[1] || '');
-            const response = await fetch(`/api/notifications/${notification.id}/read`, {
+            const response = await fetch(`/notifications/${notification.id}/read`, {
                 method: 'POST',
                 credentials: 'same-origin',
                 headers: {

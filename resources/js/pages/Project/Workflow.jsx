@@ -90,7 +90,7 @@ function DocumentPanel({ project, phase, role, perms = {} }) {
         <Table size="small" rowKey="id" pagination={false} dataSource={documents.filter((document) => document.phase === phase)} locale={{ emptyText: 'No documents uploaded yet.' }} columns={[
             { title: 'Document', dataIndex: 'document_type' },
             { title: 'File', dataIndex: 'original_filename' },
-            { title: 'Download', render: (_, document) => <Button size="small" href={`/api/documents/${document.id}/download`}>Download</Button> },
+            { title: 'Download', render: (_, document) => <Button size="small" href={`/project/documents/${document.id}/download`}>Download</Button> },
             { title: 'Status', dataIndex: 'status', render: (value) => <Tag color={statusColor[value]}>{value}</Tag> },
             { title: 'Comments', dataIndex: 'reviewer_comments', render: (value) => value || '—' },
             ...(canReview ? [{ title: 'Review', render: (_, document) => document.status === 'Pending Review' ? <Space><Button size="small" type="primary" onClick={() => review(document, 'Approved')}>Approve</Button><Button size="small" danger onClick={() => review(document, 'Returned')}>Return</Button></Space> : '—' }] : []),
@@ -330,12 +330,12 @@ export default function Workflow({ project, analysts = [], supervisors = [] }) {
         <DocumentPanel project={project} phase={phase} role={role} perms={perms} />
         <AttestationPanel project={project} role={role} perms={perms} />
         {(phase === 'Closure' || can('can_view_financials', ['supervisor', 'manager', 'dict', 'admin'])) && <Card className="mt-4" title="Project downloads"><Space wrap>
-            <Button icon={<DownloadOutlined />} href={`/api/projects/${project.id}/report/download`}>Project data (JSON)</Button>
+            <Button icon={<DownloadOutlined />} href={`/project/${project.id}/report/download`}>Project data (JSON)</Button>
             {['supervisor', 'manager', 'dict'].includes(role) && <>
                 <Button icon={<DownloadOutlined />} href={`/project/${project.id}/tracker/excel`}>Tracker (CSV)</Button>
                 <Button icon={<DownloadOutlined />} href={`/project/${project.id}/tracker/pdf`}>Tracker (PDF)</Button>
             </>}
-            {phase === 'Closure' && <Button icon={<DownloadOutlined />} href={`/api/projects/${project.id}/lessons-learned/report/download`}>Lessons learned (JSON)</Button>}
+            {phase === 'Closure' && <Button icon={<DownloadOutlined />} href={`/project/${project.id}/lessons-learned/report/download`}>Lessons learned (JSON)</Button>}
         </Space></Card>}
         <Alert className="mt-4" type="info" showIcon message="Every button on this page saves to the project database. Phase changes are still protected by the required document, approval, activity, and UAT checks." />
     </PortalLayout>;

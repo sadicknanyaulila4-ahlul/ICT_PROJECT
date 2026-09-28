@@ -9,6 +9,7 @@ use App\Http\Controllers\ReportController;
 use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\SupportController;
 use App\Models\Project;
 use Inertia\Inertia;
@@ -51,6 +52,17 @@ Route::patch('/profile', [ProfileController::class, 'update'])->middleware('role
 Route::post('/profile/photo', [ProfileController::class, 'updatePhoto'])->middleware('role:admin,analyst,supervisor,manager,dict')->name('profile.photo.update');
 Route::delete('/profile/photo', [ProfileController::class, 'destroyPhoto'])->middleware('role:admin,analyst,supervisor,manager,dict')->name('profile.photo.destroy');
 Route::get('/notifications', fn () => Inertia::render('Notifications'))->middleware('role:admin,analyst,supervisor,manager,dict')->name('notifications');
+Route::get('/notifications/data', [NotificationController::class, 'index'])->middleware('role:admin,analyst,supervisor,manager,dict')->name('notifications.data');
+Route::post('/notifications/{notification}/read', [NotificationController::class, 'markAsRead'])->middleware('role:admin,analyst,supervisor,manager,dict')->name('notifications.mark-read');
+Route::get('/project/documents/{document}/download', [DocumentController::class, 'download'])
+    ->middleware('role:admin,analyst,supervisor,manager,dict')
+    ->name('project.documents.download');
+Route::get('/project/{project}/report/download', [ReportController::class, 'exportProjectData'])
+    ->middleware('role:admin,analyst,supervisor,manager,dict')
+    ->name('project.report.download');
+Route::get('/project/{project}/lessons-learned/report/download', [ReportController::class, 'exportLessonsLearned'])
+    ->middleware('role:admin,analyst,supervisor,manager,dict')
+    ->name('project.lessons-learned.report.download');
 Route::get('/support', [SupportController::class, 'index'])->middleware('role:admin,analyst,supervisor,manager,dict')->name('support');
 Route::post('/support', [SupportController::class, 'store'])->middleware('role:analyst,supervisor,manager,dict')->name('support.store');
 Route::post('/support/{ticket}/reply', [SupportController::class, 'reply'])->middleware('role:admin')->name('support.reply');

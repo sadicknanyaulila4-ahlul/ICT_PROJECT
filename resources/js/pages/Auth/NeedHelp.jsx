@@ -12,15 +12,18 @@ export default function NeedHelp({ errors = {} }) {
         onError: () => message.error('Rekebisha sehemu zenye hitilafu.'),
     });
     return (
-        <main className="auth-page">
+        <main className="auth-page auth-support-page">
             <section className="auth-hero">
                 <img className="auth-logo" src="/images/nssf%20logo.png" alt="NSSF logo" />
                 <Typography.Text className="auth-kicker">ICT MANAGEMENT SYSTEM (ICTMS)</Typography.Text>
                 <Typography.Title>Need help?</Typography.Title>
                 <Typography.Paragraph>Jaza fomu — taarifa itafika kwa administrator kama changamoto (challenge) na utajibiwa kupitia email yako.</Typography.Paragraph>
             </section>
-            <section className="auth-panel">
-                <Card bordered={false}>
+            <div className="auth-subbar">
+                <strong>Project Management</strong>
+            </div>
+            <section className="auth-panel auth-support-panel">
+                <Card className="support-form-card" variant="borderless">
                     <Typography.Title level={2}>Tuma taarifa kwa Admin</Typography.Title>
                     <Typography.Paragraph type="secondary">Huhitaji kuingia (login) kutuma taarifa hii. Tumia active email.</Typography.Paragraph>
                     <Form layout="vertical" onFinish={submit}>

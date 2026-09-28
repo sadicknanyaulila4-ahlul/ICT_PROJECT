@@ -11,15 +11,18 @@ export default function ForgotPassword({ errors = {} }) {
         onError: () => message.error('Rekebisha email yako.'),
     });
     return (
-        <main className="auth-page">
+        <main className="auth-page auth-support-page">
             <section className="auth-hero">
                 <img className="auth-logo" src="/images/nssf%20logo.png" alt="NSSF logo" />
                 <Typography.Text className="auth-kicker">ICT MANAGEMENT SYSTEM (ICTMS)</Typography.Text>
                 <Typography.Title>Forgot password?</Typography.Title>
                 <Typography.Paragraph>Weka active email yako — tutakutumia link ya ku-reset password hadi ufanikiwe kuingia.</Typography.Paragraph>
             </section>
-            <section className="auth-panel">
-                <Card bordered={false}>
+            <div className="auth-subbar">
+                <strong>Project Management</strong>
+            </div>
+            <section className="auth-panel auth-support-panel">
+                <Card className="support-form-card" variant="borderless">
                     <Typography.Title level={2}>Reset password</Typography.Title>
                     <Typography.Paragraph type="secondary">Link itatumwa kwenye email yako.</Typography.Paragraph>
                     <Form layout="vertical" onFinish={submit}>
