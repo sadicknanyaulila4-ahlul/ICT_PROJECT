@@ -57,6 +57,7 @@ class RequirementComponentController extends Controller
     /** Review an individual RTM component. */
     public function review(Request $request, RequirementComponent $requirementComponent)
     {
+        $this->authorizeAssignedSupervisor($requirementComponent->project);
         $validated = $request->validate([
             'status' => 'required|in:Approved,Returned',
             'review_comments' => 'nullable|string|required_if:status,Returned',

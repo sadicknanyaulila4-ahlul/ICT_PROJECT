@@ -73,6 +73,7 @@ class ChangeRequestController extends Controller
      */
     public function approve(Request $request, ChangeRequest $changeRequest)
     {
+        $this->authorizeAssignedSupervisor($changeRequest->project);
         $validated = $request->validate([
             'approval_comments' => 'nullable|string',
         ]);
@@ -95,6 +96,7 @@ class ChangeRequestController extends Controller
      */
     public function reject(Request $request, ChangeRequest $changeRequest)
     {
+        $this->authorizeAssignedSupervisor($changeRequest->project);
         $validated = $request->validate([
             'approval_comments' => 'nullable|string',
         ]);

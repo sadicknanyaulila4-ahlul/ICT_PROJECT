@@ -120,6 +120,7 @@ class LessonsLearnedController extends Controller
      */
     public function review(Request $request, LessonLearned $lessonLearned)
     {
+        $this->authorizeAssignedSupervisor($lessonLearned->project);
         $validated = $request->validate([
             'status' => 'required|in:Approved,Returned',
             'review_comments' => 'nullable|string',

@@ -15,6 +15,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class ProjectController extends Controller
@@ -100,25 +101,28 @@ class ProjectController extends Controller
         $data['missing_documents'] = $this->missingDocuments($project, $project->phase);
 
         // Role-based visibility flags consumed by the frontend.
+        $isAssignedSupervisor = $project->supervisor_id === Auth::id();
+        $isAssignedAnalyst = $project->assigned_analyst_id === Auth::id();
         $data['permissions'] = [
-            'can_assign' => in_array($role, ['supervisor', 'admin'], true),
-            'can_upload_initiation' => $role === 'supervisor',
-            'can_replace_returned_documents' => $role === 'supervisor'
-                || ($role === 'analyst' && $project->assigned_analyst_id === Auth::id()),
-            'can_upload_other' => in_array($role, ['analyst', 'supervisor'], true),
-            'can_review_documents' => $role === 'supervisor',
-            'can_plan' => $role === 'analyst',
-            'can_review_plan' => $role === 'supervisor',
-            'can_update_progress' => $role === 'analyst',
-            'can_review_requirements' => $role === 'supervisor',
-            'can_change' => $role === 'analyst',
-            'can_decide_change' => $role === 'supervisor',
-            'can_lesson' => $role === 'analyst',
-            'can_review_lesson' => $role === 'supervisor',
+            'can_assign' => $role === 'admin' || ($role === 'supervisor' && $isAssignedSupervisor),
+            'can_upload_initiation' => $role === 'supervisor' && $isAssignedSupervisor,
+            'can_replace_returned_documents' => ($role === 'supervisor' && $isAssignedSupervisor)
+                || ($role === 'analyst' && $isAssignedAnalyst),
+            'can_upload_other' => ($role === 'analyst' && $isAssignedAnalyst)
+                || ($role === 'supervisor' && $isAssignedSupervisor),
+            'can_review_documents' => $role === 'supervisor' && $isAssignedSupervisor,
+            'can_plan' => $role === 'analyst' && $isAssignedAnalyst,
+            'can_review_plan' => $role === 'supervisor' && $isAssignedSupervisor,
+            'can_update_progress' => $role === 'analyst' && $isAssignedAnalyst,
+            'can_review_requirements' => $role === 'supervisor' && $isAssignedSupervisor,
+            'can_change' => $role === 'analyst' && $isAssignedAnalyst,
+            'can_decide_change' => $role === 'supervisor' && $isAssignedSupervisor,
+            'can_lesson' => $role === 'analyst' && $isAssignedAnalyst,
+            'can_review_lesson' => $role === 'supervisor' && $isAssignedSupervisor,
             'can_attest_manager' => $role === 'manager',
             'can_attest_dict' => $role === 'dict',
-            'can_transition' => $role === 'supervisor',
-            'can_close' => $role === 'supervisor',
+            'can_transition' => $role === 'supervisor' && $isAssignedSupervisor,
+            'can_close' => $role === 'supervisor' && $isAssignedSupervisor,
             'can_view_financials' => in_array($role, ['supervisor', 'manager', 'dict', 'admin'], true),
         ];
 
@@ -195,11 +199,28 @@ class ProjectController extends Controller
      */
     public function uploadDocument(Request $request, Project $project)
     {
+        $phase = $request->input('phase');
         $validated = $request->validate([
-            'document_type' => 'required|string|max:255',
+            'document_type' => ['required', Rule::in($this->requiredDocuments(is_string($phase) ? $phase : ''))],
             'file' => 'required|file|mimes:pdf,doc,docx,xls,xlsx,csv,txt,rtf,odt,ods,ppt,pptx,jpg,jpeg,png,zip|max:10240',
             'phase' => 'required|in:Initiation,Planning,Execution,Closure',
         ]);
+
+        abort_unless($project->phase === $validated['phase'], 422, 'Documents must be uploaded in the current project phase.');
+        $role = $request->user()?->role;
+        abort_unless(
+            ($role === 'analyst' && $project->assigned_analyst_id === Auth::id())
+                || ($role === 'supervisor' && $project->supervisor_id === Auth::id()),
+            403,
+            'Only the assigned analyst or project supervisor can upload documents.'
+        );
+        $isInitiation = $validated['phase'] === 'Initiation';
+        abort_unless(
+            ($isInitiation && $role === 'supervisor')
+                || (! $isInitiation && in_array($role, ['analyst', 'supervisor'], true)),
+            403,
+            'Your role cannot upload documents for this phase.'
+        );
 
         $filePath = $request->file('file')->store('documents/'.$project->id, 'private');
 
@@ -225,6 +246,7 @@ class ProjectController extends Controller
      */
     public function reviewDocument(Request $request, Document $document)
     {
+        $this->authorizeAssignedSupervisor($document->project);
         $validated = $request->validate([
             'status' => 'required|in:Approved,Returned',
             'reviewer_comments' => 'nullable|string',
@@ -248,8 +270,12 @@ class ProjectController extends Controller
      */
     public function assignAnalyst(Request $request, Project $project)
     {
+        if ($request->user()?->role === 'supervisor') {
+            $this->authorizeAssignedSupervisor($project);
+        }
+
         $validated = $request->validate([
-            'assigned_analyst_id' => 'required|exists:users,id',
+            'assigned_analyst_id' => ['required', Rule::exists('users', 'id')->where('role', 'analyst')],
         ]);
 
         $project->update([
@@ -328,6 +354,7 @@ class ProjectController extends Controller
     /** Approve or return the implementation plan after a supervisor review. */
     public function reviewImplementationPlan(Request $request, Project $project)
     {
+        $this->authorizeAssignedSupervisor($project);
         abort_unless($project->phase === 'Planning', 422, 'The implementation plan can only be reviewed during the Planning phase.');
 
         $validated = $request->validate([
@@ -411,6 +438,7 @@ class ProjectController extends Controller
      */
     public function approveRequirementsTracker(Request $request, Project $project)
     {
+        $this->authorizeAssignedSupervisor($project);
         $validated = $request->validate([
             'status' => 'required|in:Approved,Returned',
             'approval_comments' => 'nullable|string',
@@ -473,6 +501,7 @@ class ProjectController extends Controller
      */
     public function transitionToPlanning(Request $request, Project $project)
     {
+        $this->authorizeAssignedSupervisor($project);
         if ($project->phase !== 'Initiation') {
             return response()->json([
                 'message' => 'Project must be in Initiation phase to transition to Planning.',
@@ -501,6 +530,7 @@ class ProjectController extends Controller
      */
     public function transitionToExecution(Request $request, Project $project)
     {
+        $this->authorizeAssignedSupervisor($project);
         if ($project->phase !== 'Planning') {
             return response()->json([
                 'message' => 'Project must be in Planning phase to transition to Execution.',
@@ -541,6 +571,7 @@ class ProjectController extends Controller
      */
     public function transitionToClosure(Request $request, Project $project)
     {
+        $this->authorizeAssignedSupervisor($project);
         if ($project->phase !== 'Execution') {
             return response()->json([
                 'message' => 'Project must be in Execution phase to transition to Closure.',
@@ -633,6 +664,7 @@ class ProjectController extends Controller
      */
     public function closeProject(Request $request, Project $project)
     {
+        $this->authorizeAssignedSupervisor($project);
         if ($project->phase !== 'Closure') {
             return response()->json([
                 'message' => 'Project must be in Closure phase to close.',
@@ -695,6 +727,7 @@ class ProjectController extends Controller
      */
     public function approveBySupervisor(Request $request, Project $project)
     {
+        $this->authorizeAssignedSupervisor($project);
         $project->update(['supervisor_approved' => true]);
 
         return response()->json([

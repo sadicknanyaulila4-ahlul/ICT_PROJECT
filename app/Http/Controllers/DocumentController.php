@@ -9,10 +9,16 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class DocumentController extends Controller
 {
+    private function requiredDocuments(string $phase): array
+    {
+        return config("project.required_documents.{$phase}", []);
+    }
+
     public function library(Request $request)
     {
         $validated = $request->validate([
@@ -116,20 +122,27 @@ class DocumentController extends Controller
      */
     public function store(Request $request)
     {
+        $phase = $request->input('phase');
         $validated = $request->validate([
             'project_id' => 'required|exists:projects,id',
-            'document_type' => 'required|string|max:255',
+            'document_type' => ['required', Rule::in($this->requiredDocuments(is_string($phase) ? $phase : ''))],
             'phase' => 'required|in:Initiation,Planning,Execution,Closure',
             'file' => 'required|file|mimes:pdf,doc,docx,xls,xlsx,csv,txt,rtf,odt,ods,ppt,pptx,jpg,jpeg,png,zip|max:10240',
             'is_required' => 'sometimes|boolean',
             'replaces_document_id' => 'nullable|integer|exists:documents,id',
         ]);
 
-        $project = Project::find($validated['project_id']);
+        $project = Project::findOrFail($validated['project_id']);
 
         abort_unless($project->phase === $validated['phase'], 422, 'Documents must be uploaded in the current project phase.');
 
-        $role = Auth::user()->role;
+        $role = $request->user()->role;
+        abort_unless(
+            ($role !== 'analyst' || $project->assigned_analyst_id === Auth::id())
+                && ($role !== 'supervisor' || $project->supervisor_id === Auth::id()),
+            403,
+            'Only the assigned analyst or project supervisor can upload documents.'
+        );
         $isInitiation = $validated['phase'] === 'Initiation';
         abort_unless(
             ($isInitiation && $role === 'supervisor')
@@ -193,6 +206,7 @@ class DocumentController extends Controller
      */
     public function review(Request $request, Document $document)
     {
+        $this->authorizeAssignedSupervisor($document->project);
         $validated = $request->validate([
             'status' => 'required|in:Approved,Returned',
             'reviewer_comments' => 'nullable|string|required_if:status,Returned',

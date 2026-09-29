@@ -6,7 +6,6 @@ import {
     BankOutlined,
     FileSearchOutlined,
     LoginOutlined,
-    UserAddOutlined,
 } from '@ant-design/icons';
 import { Link } from '@inertiajs/react';
 
@@ -76,11 +75,6 @@ export default function Home() {
                         </Button>
                     </Link>
 
-                    <Link href="/register">
-                        <Button type="primary" icon={<UserAddOutlined />}>
-                            Register
-                        </Button>
-                    </Link>
                 </Space>
             </header>
             <div className="auth-subbar">
@@ -120,18 +114,8 @@ export default function Home() {
                         </Typography.Paragraph>
 
                         <Space wrap>
-                            <Link href="/register">
-                                <Button
-                                    type="primary"
-                                    size="large"
-                                    icon={<UserAddOutlined />}
-                                >
-                                    Create an account
-                                </Button>
-                            </Link>
-
                             <Link href="/login">
-                                <Button size="large">
+                                <Button type="primary" size="large">
                                     Sign in to continue
                                 </Button>
                             </Link>

@@ -40,10 +40,6 @@ Route::get('/', function () {
 })->name('home');
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'webLogin'])->name('web.login');
-Route::get('/register', function () {
-    return Inertia::render('Auth/Register');
-})->name('register');
-Route::post('/register', [AuthController::class, 'webRegister'])->name('web.register');
 Route::post('/logout', [AuthController::class, 'webLogout'])->name('web.logout');
 Route::middleware('auth')->group(function () {
 Route::get('/dashboard', [ProjectController::class, 'index'])->middleware('role:admin,analyst,supervisor,manager,dict')->name('dashboard');
