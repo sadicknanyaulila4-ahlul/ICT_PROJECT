@@ -3,6 +3,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Document extends Model
 {
@@ -20,6 +22,7 @@ class Document extends Model
         'reviewed_at',
         'reviewed_by',
         'is_required',
+        'replaces_document_id',
     ];
 
     protected $casts = [
@@ -40,5 +43,25 @@ class Document extends Model
     public function reviewer()
     {
         return $this->belongsTo(User::class, 'reviewed_by');
+    }
+
+    public function replacesDocument()
+    {
+        return $this->belongsTo(self::class, 'replaces_document_id');
+    }
+
+    public function replacement()
+    {
+        return $this->hasOne(self::class, 'replaces_document_id');
+    }
+
+    public function downloads(): HasMany
+    {
+        return $this->hasMany(DocumentDownload::class);
+    }
+
+    public function latestDownload(): HasOne
+    {
+        return $this->hasOne(DocumentDownload::class)->latestOfMany('downloaded_at');
     }
 }

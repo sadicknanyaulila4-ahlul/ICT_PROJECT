@@ -1,10 +1,12 @@
-import { Button, Card, Form, Input, Select, message } from 'antd';
+import { Alert, Button, Card, Form, Input, Select, Space, message } from 'antd';
 import { useForm } from '@inertiajs/react';
+import { useRef } from 'react';
 import PortalLayout from '@/Layouts/PortalLayout';
 
 const { Option } = Select;
 
 export default function Register({ systems = [], infrastructure = [] }) {
+    const systemNameInput = useRef(null);
     const { data, setData, post, processing, errors } = useForm({
         name: '',
         description: '',
@@ -33,6 +35,16 @@ export default function Register({ systems = [], infrastructure = [] }) {
     };
 
     const fieldError = (field) => errors[field] ? { validateStatus: 'error', help: errors[field] } : {};
+    const matchingSystem = data.project_source === 'System Development' && data.custom_system_name.trim()
+        ? systems.find(system => system.name.trim().toLocaleLowerCase() === data.custom_system_name.trim().toLocaleLowerCase())
+        : null;
+
+    const useExistingSystem = () => {
+        setData('project_activity', 'Review/Enhancement');
+        setData('existing_system_id', matchingSystem.id);
+        setData('custom_system_name', '');
+        message.info('The project is now linked to the existing system.');
+    };
 
     const handleSourceChange = (value) => {
         setData('project_source', value);
@@ -109,9 +121,28 @@ export default function Register({ systems = [], infrastructure = [] }) {
                                     </Select>
                                 </Form.Item>
                             ) : (
-                                <Form.Item label="New System Name" required {...fieldError('custom_system_name')}>
-                                    <Input value={data.custom_system_name} onChange={e => setData('custom_system_name', e.target.value)} />
-                                </Form.Item>
+                                <>
+                                    <Form.Item label="New System Name" required {...fieldError('custom_system_name')}>
+                                        <Input ref={systemNameInput} value={data.custom_system_name} onChange={e => setData('custom_system_name', e.target.value)} />
+                                    </Form.Item>
+                                    {matchingSystem && (
+                                        <Alert
+                                            className="mb-4"
+                                            type="warning"
+                                            showIcon
+                                            message={`"${matchingSystem.name}" already exists.`}
+                                            description={
+                                                <Space direction="vertical" size="small">
+                                                    <span>Choose the existing system for a review/enhancement project, or rename this new system to avoid duplicates.</span>
+                                                    <Space wrap>
+                                                        <Button size="small" type="primary" onClick={useExistingSystem}>Use existing system</Button>
+                                                        <Button size="small" onClick={() => systemNameInput.current?.focus()}>Rename new system</Button>
+                                                    </Space>
+                                                </Space>
+                                            }
+                                        />
+                                    )}
+                                </>
                             )}
                         </>
                     )}

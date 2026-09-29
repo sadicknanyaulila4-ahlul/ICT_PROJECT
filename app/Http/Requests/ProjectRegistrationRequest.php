@@ -4,6 +4,8 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
+use App\Models\System;
 
 class ProjectRegistrationRequest extends FormRequest
 {
@@ -82,5 +84,42 @@ class ProjectRegistrationRequest extends FormRequest
                 Rule::requiredIf(fn () => $this->input('project_source') === 'Infrastructure Development' && ! $usesExistingComponent),
             ],
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator) {
+            $usesExistingComponent = in_array($this->input('project_activity'), [
+                'Change Request',
+                'Additional Requirements',
+                'Review/Enhancement',
+            ], true);
+
+            if (! $usesExistingComponent && ($this->filled('existing_system_id') || $this->filled('existing_infrastructure_id'))) {
+                $validator->errors()->add('project_activity', 'Existing systems or infrastructure can only be selected for an existing-component activity.');
+            }
+
+            if ($this->filled('existing_system_id') && $this->filled('custom_system_name')) {
+                $validator->errors()->add('custom_system_name', 'Choose an existing system or enter a new system name, not both.');
+            }
+
+            if ($this->filled('existing_infrastructure_id') && $this->filled('custom_infrastructure_name')) {
+                $validator->errors()->add('custom_infrastructure_name', 'Choose existing infrastructure or enter a new name, not both.');
+            }
+
+            if ($this->input('project_source') !== 'System Development'
+                || $this->input('existing_system_id')
+                || ! is_string($this->input('custom_system_name'))) {
+                return;
+            }
+
+            $name = mb_strtolower(trim($this->input('custom_system_name')));
+            if ($name !== '' && System::query()->whereRaw('LOWER(TRIM(name)) = ?', [$name])->exists()) {
+                $validator->errors()->add(
+                    'custom_system_name',
+                    'A system with this name already exists. Select the existing system or enter a different name.'
+                );
+            }
+        });
     }
 }

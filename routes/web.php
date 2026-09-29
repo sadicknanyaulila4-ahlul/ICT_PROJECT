@@ -77,7 +77,7 @@ Route::get('/requirements-tracker-preview', function () {
 Route::get('/project-workflow-preview', function () {
     return Inertia::render('Project/Workflow');
 })->middleware('role:analyst,supervisor')->name('project.workflow.preview');
-Route::get('/project-pages/documents', fn () => Inertia::render('Project/Modules', ['module' => 'documents']))->middleware('role:supervisor,manager,dict')->name('project.documents.preview');
+Route::get('/project-pages/documents', [DocumentController::class, 'library'])->middleware('role:supervisor,manager,dict')->name('project.documents.preview');
 Route::get('/project-pages/changes', fn () => Inertia::render('Project/Modules', ['module' => 'changes']))->middleware('role:supervisor,manager,dict')->name('project.changes.preview');
 Route::get('/project-pages/reports', fn () => Inertia::render('Project/Modules', [
     'module' => 'reports',
@@ -96,6 +96,7 @@ Route::get('/project-pages/{module}', function (string $module) {
 Route::middleware(['auth', 'role:analyst,supervisor'])->group(function () {
 	Route::get('/project/register', [ProjectController::class, 'create'])->name('project.create');
 	Route::post('/project', [ProjectController::class, 'store'])->name('project.store');
+	Route::delete('/project/{project}', [ProjectController::class, 'destroy'])->middleware('role:supervisor')->name('project.destroy');
 	Route::post('/project/{project}/assign-analyst', [ProjectController::class, 'assignAnalyst'])->middleware('role:admin,supervisor')->name('project.assign.analyst');
 	Route::post('/project/{project}/transition-to-planning', [ProjectController::class, 'transitionToPlanning'])->middleware('role:supervisor')->name('project.transition.planning');
 	Route::post('/project/{project}/transition-to-execution', [ProjectController::class, 'transitionToExecution'])->middleware('role:supervisor')->name('project.transition.execution');
@@ -135,7 +136,6 @@ Route::middleware(['auth', 'role:dict'])->group(function () {
 // Project Planning - Activities
 // Documents
 Route::middleware(['auth', 'role:supervisor,manager,dict'])->group(function () {
-	Route::post('/project/{project}/documents', [DocumentController::class, 'upload'])->name('documents.upload');
 	Route::patch('/documents/{document}/review', [DocumentController::class, 'review'])->name('documents.review');
 	Route::delete('/documents/{document}', [DocumentController::class, 'destroy'])->name('documents.destroy');
 });

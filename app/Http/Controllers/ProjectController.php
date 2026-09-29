@@ -14,19 +14,14 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class ProjectController extends Controller
 {
     private function requiredDocuments(string $phase): array
     {
-        return match ($phase) {
-            'Initiation' => ['Approved Concept Note', 'e-Government Authority Letter'],
-            'Planning' => ['Project Proposal', 'Project Charter', 'BRD', 'SRS', 'SDD', 'Risk Management Plan', 'Change Management Plan', 'QA Management Plan', 'Procurement Management Plan'],
-            'Execution' => ['FAT Report', 'UAT Report', 'Stakeholder Form', 'Installation Plan'],
-            'Closure' => ['System Implementation Form', 'User Manual', 'Data Migration Report', 'Integration Report', 'Training Report', 'Final Report', 'Post Go-Live Tracker', 'Updated SRS Document', 'Updated SDD Document'],
-            default => [],
-        };
+        return config("project.required_documents.{$phase}", []);
     }
 
     private function missingDocuments(Project $project, string $phase): array
@@ -64,7 +59,14 @@ class ProjectController extends Controller
             return response()->json($projects);
         }
 
-        return Inertia::render('Dashboard', compact('projects'));
+        $archivedProjects = $request->user()?->role === 'supervisor'
+            ? Project::onlyTrashed()
+                ->with('deletedByUser:id,name')
+                ->latest('deleted_at')
+                ->paginate(10, ['id', 'name', 'project_source', 'deleted_at', 'deleted_by', 'deletion_reason'])
+            : null;
+
+        return Inertia::render('Dashboard', compact('projects', 'archivedProjects'));
     }
 
     /** Show the project creation form. */
@@ -79,7 +81,7 @@ class ProjectController extends Controller
     public function workflow(Project $project)
     {
         $project->load([
-            'activities', 'requirements.reviewer', 'documents.uploader', 'documents.reviewer',
+            'activities', 'requirements.reviewer', 'documents.uploader', 'documents.reviewer', 'documents.replacesDocument', 'documents.replacement',
             'changeRequests.requester', 'changeRequests.approver', 'lessonsLearned.creator',
             'lessonsLearned.reviewer', 'attestations.attestor', 'requirementsTracker', 'supervisor', 'analyst',
         ]);
@@ -101,6 +103,8 @@ class ProjectController extends Controller
         $data['permissions'] = [
             'can_assign' => in_array($role, ['supervisor', 'admin'], true),
             'can_upload_initiation' => $role === 'supervisor',
+            'can_replace_returned_documents' => $role === 'supervisor'
+                || ($role === 'analyst' && $project->assigned_analyst_id === Auth::id()),
             'can_upload_other' => in_array($role, ['analyst', 'supervisor'], true),
             'can_review_documents' => $role === 'supervisor',
             'can_plan' => $role === 'analyst',
@@ -807,18 +811,33 @@ class ProjectController extends Controller
     /**
      * Delete project
      */
-    public function destroy(Project $project)
+    public function destroy(Request $request, Project $project)
     {
         if ($project->phase !== 'Initiation') {
-            return response()->json([
-                'message' => 'Projects can only be deleted during the Initiation phase.',
-            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+            $message = 'Projects can only be deleted during the Initiation phase.';
+
+            return $request->header('X-Inertia')
+                ? back()->withErrors(['project' => $message])
+                : response()->json(['message' => $message], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
-        $project->delete();
+        $validated = $request->validate([
+            'reason' => 'required|string|min:10|max:1000',
+        ]);
+
+        DB::transaction(function () use ($project, $validated) {
+            $project->deleted_by = Auth::id();
+            $project->deletion_reason = $validated['reason'];
+            $project->save();
+            $project->delete();
+        });
+
+        if ($request->header('X-Inertia')) {
+            return redirect()->route('dashboard')->with('success', 'Project archived with deletion responsibility recorded.');
+        }
 
         return response()->json([
-            'message' => 'Project deleted successfully',
+            'message' => 'Project archived successfully',
         ]);
     }
 }

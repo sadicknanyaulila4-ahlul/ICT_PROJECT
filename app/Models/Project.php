@@ -3,16 +3,19 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Project extends Model
 {
     use HasFactory;
+    use SoftDeletes;
 
     protected $fillable = [
         'name', 'description', 'budget', 'implementation_team_type', 'implementation_team_names', 'project_source', 'project_nature',
         'project_activity', 'existing_system_id', 'existing_infrastructure_id',
         'custom_system_name', 'custom_infrastructure_name',
         'supervisor_id', 'assigned_analyst_id', 'status', 'phase', 
+        'deleted_by', 'deletion_reason',
         'is_approved', 'supervisor_approved', 'manager_attested', 'dict_attested',
         'implementation_plan_status', 'implementation_plan_review_comments',
         'implementation_plan_reviewed_at', 'implementation_plan_reviewed_by',
@@ -41,6 +44,10 @@ class Project extends Model
 
     public function supervisor() {
         return $this->belongsTo(User::class, 'supervisor_id');
+    }
+
+    public function deletedByUser() {
+        return $this->belongsTo(User::class, 'deleted_by');
     }
 
     public function analyst() {

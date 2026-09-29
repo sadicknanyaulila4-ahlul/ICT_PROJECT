@@ -61,15 +61,17 @@ function DocumentPanel({ project, phase, role, perms = {} }) {
     const canUpload = phase === 'Initiation'
         ? (perms.can_upload_initiation ?? role === 'supervisor')
         : (perms.can_upload_other ?? ['analyst', 'supervisor'].includes(role));
-    const upload = async ({ file, onSuccess, onError }) => {
+    const canReplaceReturned = perms.can_replace_returned_documents ?? role === 'supervisor';
+    const upload = async ({ file, onSuccess, onError }, replacesDocument = null) => {
         try {
             const data = new FormData();
-            data.append('document_type', type);
+            data.append('document_type', replacesDocument?.document_type || type);
             data.append('phase', phase);
             data.append('file', file);
+            if (replacesDocument) data.append('replaces_document_id', replacesDocument.id);
             await request(`/web/project/${project.id}/documents`, 'POST', data);
             onSuccess?.();
-            refresh('Document uploaded for review.');
+            refresh(replacesDocument ? 'Corrected document uploaded and sent back for review.' : 'Document uploaded for review.');
         } catch (error) {
             message.error(error.message);
             onError?.(error);
@@ -85,14 +87,21 @@ function DocumentPanel({ project, phase, role, perms = {} }) {
     };
 
     const missingDocuments = (project.missing_documents || []).filter((documentType) => phaseDocuments.includes(documentType));
-    return <Card className="mt-4" title={`${phase} documents`} extra={canUpload && phaseDocuments.length > 0 ? <Space><Select value={type} onChange={setType} options={phaseDocuments.map((value) => ({ value, label: value }))} style={{ minWidth: 220 }} /><Upload customRequest={upload} showUploadList={false} accept=".pdf,.doc,.docx,.xls,.xlsx"><Button icon={<CloudUploadOutlined />}>Upload</Button></Upload></Space> : <Tag>View only</Tag>}>
+    return <Card className="mt-4" title={`${phase} documents`} extra={canUpload && phaseDocuments.length > 0 ? <Space><Select value={type} onChange={setType} options={phaseDocuments.map((value) => ({ value, label: value }))} style={{ minWidth: 220 }} /><Upload customRequest={(options) => upload(options)} showUploadList={false} accept=".pdf,.doc,.docx,.xls,.xlsx"><Button icon={<CloudUploadOutlined />}>Upload</Button></Upload></Space> : canReplaceReturned && documents.some((document) => document.phase === phase && document.status === 'Returned' && !document.replacement) ? <Tag color="gold">Returned documents need correction</Tag> : <Tag>View only</Tag>}>
         {missingDocuments.length > 0 && <Alert type="warning" showIcon message="Required documents still missing or not approved" description={missingDocuments.join(', ')} />}
         <Table size="small" rowKey="id" pagination={false} dataSource={documents.filter((document) => document.phase === phase)} locale={{ emptyText: 'No documents uploaded yet.' }} columns={[
             { title: 'Document', dataIndex: 'document_type' },
             { title: 'File', dataIndex: 'original_filename' },
             { title: 'Download', render: (_, document) => <Button size="small" href={`/project/documents/${document.id}/download`}>Download</Button> },
             { title: 'Status', dataIndex: 'status', render: (value) => <Tag color={statusColor[value]}>{value}</Tag> },
-            { title: 'Comments', dataIndex: 'reviewer_comments', render: (value) => value || '—' },
+            { title: 'Supervisor feedback', dataIndex: 'reviewer_comments', render: (value, document) => document.status === 'Returned' && value ? <Alert type="error" showIcon message={value} /> : value || '—' },
+            { title: 'Revision', dataIndex: ['replaces_document', 'original_filename'], render: (value) => value ? `Replaces ${value}` : 'Original submission' },
+            ...(canReplaceReturned ? [{
+                title: 'Fix & resubmit',
+                render: (_, document) => document.status === 'Returned' && !document.replacement
+                    ? <Upload customRequest={(options) => upload(options, document)} showUploadList={false} accept=".pdf,.doc,.docx,.xls,.xlsx"><Button size="small" type="primary" icon={<CloudUploadOutlined />}>Upload correction</Button></Upload>
+                    : '—',
+            }] : []),
             ...(canReview ? [{ title: 'Review', render: (_, document) => document.status === 'Pending Review' ? <Space><Button size="small" type="primary" onClick={() => review(document, 'Approved')}>Approve</Button><Button size="small" danger onClick={() => review(document, 'Returned')}>Return</Button></Space> : '—' }] : []),
         ]} />
     </Card>;
