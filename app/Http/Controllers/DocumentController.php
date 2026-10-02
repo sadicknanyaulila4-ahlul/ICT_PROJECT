@@ -143,6 +143,11 @@ class DocumentController extends Controller
             403,
             'Only the assigned analyst or project supervisor can upload documents.'
         );
+        abort_unless(
+            ! in_array($validated['phase'], ['Planning', 'Execution', 'Closure'], true) || $role === 'analyst',
+            403,
+            'Planning, Execution, and Closure documents must be uploaded by the assigned analyst.'
+        );
         $isInitiation = $validated['phase'] === 'Initiation';
         abort_unless(
             ($isInitiation && $role === 'supervisor')
@@ -164,10 +169,10 @@ class DocumentController extends Controller
                 'Only a returned document of the same type and phase can be replaced.'
             );
             abort_unless(
-                $role === 'supervisor'
+                (! in_array($validated['phase'], ['Planning', 'Execution', 'Closure'], true) && $role === 'supervisor')
                     || ($role === 'analyst' && $project->assigned_analyst_id === Auth::id()),
                 403,
-                'Only the assigned analyst or project supervisor can replace a returned document.'
+                'Only the assigned analyst can replace returned Planning, Execution, or Closure documents.'
             );
         } elseif ($role === 'analyst' && $isInitiation) {
             abort(403, 'Analysts can only upload an initiation document as a replacement after supervisor feedback.');

@@ -101,6 +101,12 @@ class LessonsLearnedController extends Controller
      */
     public function submit(LessonLearned $lessonLearned)
     {
+        abort_unless(
+            $lessonLearned->project->assigned_analyst_id === Auth::id(),
+            403,
+            'Only the assigned analyst can submit this lesson for review.'
+        );
+
         if (! in_array($lessonLearned->status, ['Draft', 'Returned'], true)) {
             return response()->json([
                 'message' => 'Only draft or returned lessons learned can be submitted.',

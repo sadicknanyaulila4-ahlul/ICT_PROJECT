@@ -214,6 +214,11 @@ class ProjectController extends Controller
             403,
             'Only the assigned analyst or project supervisor can upload documents.'
         );
+        abort_unless(
+            ! in_array($validated['phase'], ['Planning', 'Execution', 'Closure'], true) || $role === 'analyst',
+            403,
+            'Planning, Execution, and Closure documents must be uploaded by the assigned analyst.'
+        );
         $isInitiation = $validated['phase'] === 'Initiation';
         abort_unless(
             ($isInitiation && $role === 'supervisor')

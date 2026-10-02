@@ -47,6 +47,11 @@ class ChangeRequestController extends Controller
 
         $project = Project::findOrFail($validated['project_id']);
         abort_unless($project->phase === 'Execution', 422, 'Changes can only be recorded during Execution.');
+        abort_unless(
+            Auth::user()?->role === 'analyst' && $project->assigned_analyst_id === Auth::id(),
+            403,
+            'Only the assigned analyst can submit a change request.'
+        );
 
         $changeRequest = ChangeRequest::create([
             ...$validated,
