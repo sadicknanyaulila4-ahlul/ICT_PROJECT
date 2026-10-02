@@ -12,8 +12,6 @@ import { Link } from '@inertiajs/react';
 const backgroundImages = [
     '/images/building-1.jpg',
     '/images/building-2.jpg',
-    '/images/building-3.jpg',
-    '/images/building-4.jpg',
 ];
 
 const services = [
@@ -47,7 +45,7 @@ export default function Home() {
             setCurrentImage((previous) => {
                 return (previous + 1) % backgroundImages.length;
             });
-        }, 5000);
+        }, 8000);
 
         return () => clearInterval(interval);
     }, []);
@@ -70,7 +68,7 @@ export default function Home() {
 
                 <Space>
                     <Link href="/login">
-                        <Button icon={<LoginOutlined />}>
+                        <Button className="sign-in-button" icon={<LoginOutlined />}>
                             Sign in
                         </Button>
                     </Link>
@@ -115,7 +113,7 @@ export default function Home() {
 
                         <Space wrap>
                             <Link href="/login">
-                                <Button type="primary" size="large">
+                                <Button className="sign-in-button" type="primary" size="large">
                                     Sign in to continue
                                 </Button>
                             </Link>

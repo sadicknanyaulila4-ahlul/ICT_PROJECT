@@ -7,8 +7,6 @@ import { strings, getLocale } from '../../i18n';
 const backgroundImages = [
     '/images/building-1.jpg',
     '/images/building-2.jpg',
-    '/images/building-3.jpg',
-    '/images/building-4.jpg',
 ];
 
 export function LanguageSwitcher() {
@@ -34,7 +32,7 @@ export default function Login({ errors = {} }) {
     useEffect(() => {
         const interval = setInterval(() => {
             setCurrentImage((previous) => (previous + 1) % backgroundImages.length);
-        }, 5000);
+        }, 8000);
 
         return () => clearInterval(interval);
     }, []);

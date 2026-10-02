@@ -7,6 +7,12 @@ const { Option } = Select;
 
 export default function Register({ systems = [], infrastructure = [] }) {
     const systemNameInput = useRef(null);
+    const availableSystems = Array.isArray(systems)
+        ? systems.filter(system => system && system.id != null && typeof system.name === 'string')
+        : [];
+    const availableInfrastructure = Array.isArray(infrastructure)
+        ? infrastructure.filter(item => item && item.id != null && typeof item.name === 'string')
+        : [];
     const { data, setData, post, processing, errors } = useForm({
         name: '',
         description: '',
@@ -36,10 +42,14 @@ export default function Register({ systems = [], infrastructure = [] }) {
 
     const fieldError = (field) => errors[field] ? { validateStatus: 'error', help: errors[field] } : {};
     const matchingSystem = data.project_source === 'System Development' && data.custom_system_name.trim()
-        ? systems.find(system => system.name.trim().toLocaleLowerCase() === data.custom_system_name.trim().toLocaleLowerCase())
+        ? availableSystems.find(system => system.name.trim().toLocaleLowerCase() === data.custom_system_name.trim().toLocaleLowerCase())
         : null;
 
     const useExistingSystem = () => {
+        if (!matchingSystem) {
+            message.error('The matching system is no longer available. Refresh the page and try again.');
+            return;
+        }
         setData('project_activity', 'Review/Enhancement');
         setData('existing_system_id', matchingSystem.id);
         setData('custom_system_name', '');
@@ -117,7 +127,7 @@ export default function Register({ systems = [], infrastructure = [] }) {
                                         onChange={val => setData('existing_system_id', val)}
                                         placeholder="Select system"
                                     >
-                                        {systems.map(sys => <Option key={sys.id} value={sys.id}>{sys.name}</Option>)}
+                                        {availableSystems.map(sys => <Option key={sys.id} value={sys.id}>{sys.name}</Option>)}
                                     </Select>
                                 </Form.Item>
                             ) : (
@@ -156,7 +166,7 @@ export default function Register({ systems = [], infrastructure = [] }) {
                                         onChange={val => setData('existing_infrastructure_id', val)}
                                         placeholder="Select infrastructure"
                                     >
-                                        {infrastructure.map(inf => <Option key={inf.id} value={inf.id}>{inf.name}</Option>)}
+                                        {availableInfrastructure.map(inf => <Option key={inf.id} value={inf.id}>{inf.name}</Option>)}
                                     </Select>
                                 </Form.Item>
                             ) : (

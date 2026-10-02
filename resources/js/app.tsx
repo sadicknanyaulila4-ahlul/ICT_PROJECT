@@ -11,9 +11,12 @@ createInertiaApp({
             string,
             { default: React.ComponentType }
         >;
-        const page = pages[`./pages/${name}.jsx`];
+        const pagePath = `./pages/${name}.jsx`;
+        const page = pages[pagePath] ?? Object.entries(pages).find(
+            ([path]) => path.toLowerCase() === pagePath.toLowerCase(),
+        )?.[1];
         if (!page) {
-            throw new Error(`Inertia page not found: ./pages/${name}.jsx`);
+            throw new Error(`Inertia page not found: ${pagePath}`);
         }
         return page;
     },
@@ -24,4 +27,3 @@ createInertiaApp({
         color: '#9e292f',
     },
 });
-

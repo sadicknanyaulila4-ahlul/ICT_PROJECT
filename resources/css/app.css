@@ -196,9 +196,9 @@ body { background: #f4f6f8; color: var(--portal-ink); }
 .login-card .ant-input-affix-wrapper,
 .login-card .ant-input { min-height: 44px; }
 .login-card .ant-btn-primary,
-.register-card .ant-btn-primary { min-height: 46px; border: 0; border-radius: 9px; background: linear-gradient(100deg, #842126, #a8323a 70%, #c89500); box-shadow: 0 6px 16px rgba(132, 33, 38, .2); font-weight: 700; }
+.register-card .ant-btn-primary { min-height: 46px; border: 0; border-radius: 9px; background: var(--portal-gold); color: var(--portal-red-dark); box-shadow: 0 6px 16px rgba(132, 33, 38, .2); font-weight: 700; }
 .login-card .ant-btn-primary:hover,
-.register-card .ant-btn-primary:hover { background: linear-gradient(100deg, #6f1c21, #92272c 70%, #aa8000) !important; }
+.register-card .ant-btn-primary:hover { background: #e5ad00 !important; color: var(--portal-red-dark) !important; }
 .auth-register { position: relative; isolation: isolate; display: flex; flex-direction: column; gap: 0; min-height: 100vh; background-position: center; background-size: cover; background-attachment: fixed; }
 .auth-register::before { position: absolute; z-index: -1; inset: 0; background: linear-gradient(135deg, rgba(35, 29, 27, .52), rgba(55, 38, 27, .64)); content: ''; }
 .auth-register .auth-hero {
@@ -871,6 +871,19 @@ body { background: #f4f6f8; color: var(--portal-ink); }
     color: #5b2528 !important;
 }
 
+.landing-page .sign-in-button {
+    border-color: var(--portal-gold);
+    background: var(--portal-gold);
+    color: var(--portal-red-dark);
+}
+
+.landing-page .sign-in-button:hover,
+.landing-page .sign-in-button:focus {
+    border-color: #e5ad00 !important;
+    background: #e5ad00 !important;
+    color: var(--portal-red-dark) !important;
+}
+
 .slideshow-hero .hero-copy h1 {
     font-size: clamp(32px, 4vw, 48px);
 }
@@ -882,6 +895,7 @@ body { background: #f4f6f8; color: var(--portal-ink); }
 .services-section > .ant-typography h2,
 .services-section h2.ant-typography {
     font-size: 28px;
+    color: var(--portal-red);
 }
 
 .service-card h4.ant-typography {

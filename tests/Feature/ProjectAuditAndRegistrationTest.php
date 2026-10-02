@@ -60,4 +60,48 @@ class ProjectAuditAndRegistrationTest extends TestCase
         $response->assertUnprocessable()
             ->assertJsonValidationErrors('custom_system_name');
     }
+
+    public function test_assigned_analyst_can_save_a_lesson_through_the_web_session_route(): void
+    {
+        $analyst = User::factory()->create(['role' => 'analyst']);
+        $project = Project::create([
+            'name' => 'Closure lesson project',
+            'project_source' => 'System Development',
+            'project_nature' => 'Planned',
+            'project_activity' => 'New Implementation (Major)',
+            'custom_system_name' => 'Closure lesson system',
+            'assigned_analyst_id' => $analyst->id,
+            'status' => 'Ongoing',
+            'phase' => 'Closure',
+        ]);
+
+        $this->actingAs($analyst)
+            ->postJson("/project/{$project->id}/lessons-learned", [
+                'category' => 'Planning',
+                'lesson_description' => 'Start stakeholder engagement earlier.',
+                'recommendations' => 'Involve stakeholders during initiation.',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('lesson.status', 'Draft');
+
+        $this->assertDatabaseHas('lessons_learned', [
+            'project_id' => $project->id,
+            'created_by' => $analyst->id,
+            'category' => 'Planning',
+            'status' => 'Draft',
+        ]);
+    }
+
+    public function test_analyst_can_open_the_project_registration_form(): void
+    {
+        $analyst = User::factory()->create(['role' => 'analyst']);
+
+        $this->actingAs($analyst)
+            ->get('/project/register')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Project/Initiation/Register')
+                ->has('systems')
+                ->has('infrastructure'));
+    }
 }

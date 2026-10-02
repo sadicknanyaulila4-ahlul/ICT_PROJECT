@@ -274,7 +274,7 @@ function ChangeRequests({ project, role, perms = {} }) {
 function LessonsPanel({ project, role, perms = {} }) {
     const [form] = Form.useForm();
     const submit = async (values) => {
-        try { await request(`/projects/${project.id}/lessons-learned`, 'POST', values); form.resetFields(); refresh('Lesson learned saved.'); } catch (error) { message.error(error.message); }
+        try { await request(`/web/project/${project.id}/lessons-learned`, 'POST', values); form.resetFields(); refresh('Lesson learned saved.'); } catch (error) { message.error(error.message); }
     };
     const review = async (lesson, status) => {
         const review_comments = status === 'Returned' ? window.prompt('Enter review comments:') : '';

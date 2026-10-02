@@ -11,6 +11,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\SupportController;
+use App\Http\Controllers\LessonsLearnedController;
 use App\Models\Project;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Route;
@@ -92,6 +93,9 @@ Route::get('/project-pages/{module}', function (string $module) {
 Route::middleware(['auth', 'role:analyst,supervisor'])->group(function () {
 	Route::get('/project/register', [ProjectController::class, 'create'])->name('project.create');
 	Route::post('/project', [ProjectController::class, 'store'])->name('project.store');
+	Route::post('/project/{project}/lessons-learned', [LessonsLearnedController::class, 'storeForProject'])
+		->middleware('role:analyst')
+		->name('project.lessons-learned.store');
 	Route::delete('/project/{project}', [ProjectController::class, 'destroy'])->middleware('role:supervisor')->name('project.destroy');
 	Route::post('/project/{project}/assign-analyst', [ProjectController::class, 'assignAnalyst'])->middleware('role:admin,supervisor')->name('project.assign.analyst');
 	Route::post('/project/{project}/transition-to-planning', [ProjectController::class, 'transitionToPlanning'])->middleware('role:supervisor')->name('project.transition.planning');

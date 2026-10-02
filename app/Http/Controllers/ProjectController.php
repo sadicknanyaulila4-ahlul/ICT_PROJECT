@@ -73,7 +73,7 @@ class ProjectController extends Controller
     /** Show the project creation form. */
     public function create()
     {
-        return Inertia::render('project/initiation/Register', [
+        return Inertia::render('Project/Initiation/Register', [
             'systems' => System::where('is_active', true)->get(),
             'infrastructure' => InfrastructureComponent::where('is_active', true)->get(),
         ]);
