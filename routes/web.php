@@ -1,9 +1,7 @@
 <?php
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\ProjectActivityController;
-use App\Http\Controllers\ActivityController;
 use App\Http\Controllers\DocumentController;
-use App\Http\Controllers\RequirementController;
 use App\Http\Controllers\RequirementComponentController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\AdminUserController;
@@ -71,9 +69,6 @@ Route::get('/projects/{project}/workflow', [ProjectController::class, 'workflow'
 Route::get('/requirements-tracker-preview', function () {
 	return Inertia::render('Project/Execution/Traceability');
 })->middleware('role:analyst,supervisor')->name('requirements.preview');
-Route::get('/project-workflow-preview', function () {
-    return Inertia::render('Project/Workflow');
-})->middleware('role:analyst,supervisor')->name('project.workflow.preview');
 Route::get('/project-pages/documents', [DocumentController::class, 'library'])->middleware('role:supervisor,manager,dict')->name('project.documents.preview');
 Route::get('/project-pages/changes', fn () => Inertia::render('Project/Modules', ['module' => 'changes']))->middleware('role:supervisor,manager,dict')->name('project.changes.preview');
 Route::get('/project-pages/reports', fn () => Inertia::render('Project/Modules', [
@@ -82,11 +77,6 @@ Route::get('/project-pages/reports', fn () => Inertia::render('Project/Modules',
 ]))->middleware('role:supervisor,manager,dict')->name('project.reports.preview');
 Route::get('/project-pages/notifications', fn () => Inertia::render('Project/Modules', ['module' => 'notifications']))->middleware('role:analyst,supervisor,manager,dict')->name('project.notifications.preview');
 Route::get('/project-pages/closure', fn () => Inertia::render('Project/Modules', ['module' => 'closure']))->middleware('role:supervisor,manager,dict')->name('project.closure.preview');
-Route::get('/project-pages/{module}', function (string $module) {
-	abort_unless(in_array($module, ['initiation', 'planning', 'execution'], true), 404);
-
-	return Inertia::render('Project/Modules', ['module' => $module]);
-})->middleware('role:analyst,supervisor')->name('project.module.preview');
 });
 
 // Project Initiation
@@ -111,8 +101,6 @@ Route::middleware(['auth', 'role:analyst,supervisor'])->group(function () {
 	Route::post('/projects/{project}/requirements', [RequirementComponentController::class, 'storeForProject'])->middleware('role:analyst')->name('project.requirements.store');
 	Route::post('/requirements/{requirementComponent}/update', [RequirementComponentController::class, 'update'])->middleware('role:analyst')->name('project.requirements.update');
 	Route::patch('/requirements/{requirementComponent}/review', [RequirementComponentController::class, 'review'])->middleware('role:supervisor')->name('project.requirements.review');
-	Route::resource('projects.activities', ActivityController::class)->only(['index', 'store', 'update', 'destroy']);
-	Route::resource('projects.requirements', RequirementController::class)->only(['index', 'store', 'update', 'destroy']);
 });
 Route::middleware(['auth', 'role:admin'])->group(function () {
 	Route::post('/project/{project}/assign-supervisor', [ProjectController::class, 'assignSupervisor'])->name('project.assign.supervisor');
