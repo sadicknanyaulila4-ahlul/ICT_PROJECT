@@ -79,7 +79,7 @@ export default function Dashboard({ projects, archivedProjects, metrics: stats }
     const columns = [
         { title: 'SNo', render: (_, __, index) => index + 1, width: 70 },
         { title: 'Project', dataIndex: 'name', render: (name, record) => <Link className="project-link" href={`/projects/${record.id}/workflow`}>{name}</Link> },
-        { title: 'Category', dataIndex: 'project_source', render: (value) => <Tag color="blue">{value || 'System'}</Tag> },
+        { title: 'Category', dataIndex: 'project_source', render: (value) => <Tag color="default" style={{ color: '#000' }}>{value || 'System'}</Tag> },
         { title: 'Phase', dataIndex: 'phase' },
         { title: 'Status', dataIndex: 'status', render: (value) => <Tag color={value === 'Completed' ? 'green' : 'gold'}>{value || 'Not Started'}</Tag> },
         ...(role === 'supervisor' ? [{

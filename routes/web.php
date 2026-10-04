@@ -2,6 +2,7 @@
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\ProjectActivityController;
 use App\Http\Controllers\DocumentController;
+use App\Http\Controllers\ChangeRequestController;
 use App\Http\Controllers\RequirementComponentController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\AdminUserController;
@@ -66,9 +67,6 @@ Route::post('/admin/users', [AdminUserController::class, 'store'])->middleware('
 Route::patch('/admin/users/{user}', [AdminUserController::class, 'update'])->middleware('role:admin')->name('admin.users.update');
 Route::delete('/admin/users/{user}', [AdminUserController::class, 'destroy'])->middleware('role:admin')->name('admin.users.destroy');
 Route::get('/projects/{project}/workflow', [ProjectController::class, 'workflow'])->middleware('role:admin,analyst,supervisor,manager,dict')->name('project.workflow');
-Route::get('/requirements-tracker-preview', function () {
-	return Inertia::render('Project/Execution/Traceability');
-})->middleware('role:analyst,supervisor')->name('requirements.preview');
 Route::get('/project-pages/documents', [DocumentController::class, 'library'])->middleware('role:supervisor,manager,dict')->name('project.documents.preview');
 Route::get('/project-pages/changes', fn () => Inertia::render('Project/Modules', ['module' => 'changes']))->middleware('role:supervisor,manager,dict')->name('project.changes.preview');
 Route::get('/project-pages/reports', fn () => Inertia::render('Project/Modules', [
@@ -86,6 +84,9 @@ Route::middleware(['auth', 'role:analyst,supervisor'])->group(function () {
 	Route::post('/project/{project}/lessons-learned', [LessonsLearnedController::class, 'storeForProject'])
 		->middleware('role:analyst')
 		->name('project.lessons-learned.store');
+	Route::post('/project/lessons-learned/{lessonLearned}/submit', [LessonsLearnedController::class, 'submit'])
+		->middleware('role:analyst')
+		->name('project.lessons-learned.submit');
 	Route::delete('/project/{project}', [ProjectController::class, 'destroy'])->middleware('role:supervisor')->name('project.destroy');
 	Route::post('/project/{project}/assign-analyst', [ProjectController::class, 'assignAnalyst'])->middleware('role:admin,supervisor')->name('project.assign.analyst');
 	Route::post('/project/{project}/transition-to-planning', [ProjectController::class, 'transitionToPlanning'])->middleware('role:supervisor')->name('project.transition.planning');
@@ -93,6 +94,7 @@ Route::middleware(['auth', 'role:analyst,supervisor'])->group(function () {
 	Route::post('/project/{project}/transition-to-closure', [ProjectController::class, 'transitionToClosure'])->middleware('role:supervisor')->name('project.transition.closure');
 	Route::post('/project/{project}/activities/plan/review', [ProjectController::class, 'reviewImplementationPlan'])->middleware('role:supervisor')->name('project.activities.plan.review');
 	Route::post('/project/{project}/activities', [ProjectActivityController::class, 'storeForProject'])->middleware('role:analyst')->name('project.activities.store');
+	Route::post('/project/{project}/change-requests', [ChangeRequestController::class, 'storeForProject'])->middleware('role:analyst')->name('project.change-requests.store');
 	Route::patch('/project/activities/{activity}', [ProjectActivityController::class, 'update'])->middleware('role:analyst')->name('project.activities.update');
 	Route::delete('/project/activities/{activity}', [ProjectActivityController::class, 'destroy'])->middleware('role:analyst')->name('project.activities.destroy');
 	Route::post('/project/activities/{activity}/progress', [ProjectActivityController::class, 'recordProgress'])->middleware('role:analyst')->name('project.activities.progress');
@@ -113,6 +115,9 @@ Route::middleware(['auth', 'role:supervisor,manager,dict'])->group(function () {
 });
 Route::middleware(['auth', 'role:supervisor'])->group(function () {
 	Route::post('/project/{project}/close', [ProjectController::class, 'closeProject'])->name('project.close');
+	Route::patch('/project/lessons-learned/{lessonLearned}/review', [LessonsLearnedController::class, 'review'])->name('project.lessons-learned.review');
+	Route::post('/project/change-requests/{changeRequest}/approve', [ChangeRequestController::class, 'approve'])->name('project.change-requests.approve');
+	Route::post('/project/change-requests/{changeRequest}/reject', [ChangeRequestController::class, 'reject'])->name('project.change-requests.reject');
 });
 Route::middleware(['auth', 'role:manager'])->group(function () {
 	Route::post('/project/{project}/attest-manager', [ProjectController::class, 'attestByManager'])->name('project.attest.manager');

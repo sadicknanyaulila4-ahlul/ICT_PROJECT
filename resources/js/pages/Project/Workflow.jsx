@@ -58,10 +58,15 @@ function DocumentPanel({ project, phase, role, perms = {} }) {
     const [type, setType] = useState(phaseDocuments[0]);
     const documents = project.documents || [];
     const canReview = perms.can_review_documents ?? role === 'supervisor';
-    const canUpload = phase === 'Initiation'
-        ? (perms.can_upload_initiation ?? role === 'supervisor')
-        : (perms.can_upload_other ?? ['analyst', 'supervisor'].includes(role));
-    const canReplaceReturned = perms.can_replace_returned_documents ?? role === 'supervisor';
+    const analystUploadPhase = ['Planning', 'Execution', 'Closure'].includes(phase);
+    const canUpload = analystUploadPhase
+        ? (perms.can_plan ?? role === 'analyst')
+        : phase === 'Initiation'
+            ? (perms.can_upload_initiation ?? role === 'supervisor')
+            : (perms.can_upload_other ?? ['analyst', 'supervisor'].includes(role));
+    const canReplaceReturned = analystUploadPhase
+        ? (perms.can_plan ?? role === 'analyst')
+        : (perms.can_replace_returned_documents ?? role === 'supervisor');
     const upload = async ({ file, onSuccess, onError }, replacesDocument = null) => {
         try {
             const data = new FormData();
@@ -257,7 +262,7 @@ function Assignment({ project, analysts, supervisors = [], canAssignSupervisor =
 function ChangeRequestForm({ project }) {
     const [form] = Form.useForm();
     const submit = async (values) => {
-        try { await request(`/projects/${project.id}/change-requests`, 'POST', values); form.resetFields(); refresh('Change request submitted.'); } catch (error) { message.error(error.message); }
+        try { await request(`/web/project/${project.id}/change-requests`, 'POST', values); form.resetFields(); refresh('Change request submitted.'); } catch (error) { message.error(error.message); }
     };
     return <Card className="mt-4" title="Analyst task: record approved project change"><Form form={form} layout="vertical" onFinish={submit}><Row gutter={12}><Col xs={24} md={8}><Form.Item name="title" label="Change title" rules={[{ required: true }]}><Input /></Form.Item></Col><Col xs={24} md={6}><Form.Item name="impact_level" label="Impact"><Select options={['Low', 'Medium', 'High'].map((value) => ({ value, label: value }))} /></Form.Item></Col><Col xs={24} md={10}><Form.Item name="description" label="Description" rules={[{ required: true }]}><Input /></Form.Item></Col></Row><Button htmlType="submit">Submit change</Button></Form></Card>;
 }
@@ -266,7 +271,8 @@ function ChangeRequests({ project, role, perms = {} }) {
     const decide = async (change, status) => {
         const approval_comments = status === 'Rejected' ? window.prompt('Enter rejection comments:') : '';
         if (status === 'Rejected' && !approval_comments) return message.warning('Comments are required when rejecting a change.');
-        try { await request(`/change-requests/${change.id}/${status.toLowerCase()}`, 'POST', { approval_comments }); refresh(`Change request ${status.toLowerCase()}.`); } catch (error) { message.error(error.message); }
+        const action = status === 'Approved' ? 'approve' : 'reject';
+        try { await request(`/web/project/change-requests/${change.id}/${action}`, 'POST', { approval_comments }); refresh(`Change request ${status.toLowerCase()}.`); } catch (error) { message.error(error.message); }
     };
     return <Card className="mt-4" title="Approved changes register"><Table size="small" rowKey="id" pagination={false} dataSource={project.change_requests || project.changeRequests || []} locale={{ emptyText: 'No change requests recorded.' }} columns={[{ title: 'Title', dataIndex: 'title' }, { title: 'Impact', dataIndex: 'impact_level' }, { title: 'Status', dataIndex: 'status', render: (value) => <Tag color={statusColor[value]}>{value}</Tag> }, { title: 'Decision comments', dataIndex: 'approval_comments', render: (value) => value || '—' }, ...((perms.can_decide_change ?? role === 'supervisor') ? [{ title: 'Decision', render: (_, row) => row.status === 'Pending' ? <Space><Button size="small" type="primary" onClick={() => decide(row, 'Approved')}>Approve</Button><Button size="small" danger onClick={() => decide(row, 'Rejected')}>Reject</Button></Space> : '—' }] : [])]} /></Card>;
 }
@@ -278,10 +284,10 @@ function LessonsPanel({ project, role, perms = {} }) {
     };
     const review = async (lesson, status) => {
         const review_comments = status === 'Returned' ? window.prompt('Enter review comments:') : '';
-        try { await request(`/lessons-learned/${lesson.id}/review`, 'PATCH', { status, review_comments }); refresh(`Lesson ${status.toLowerCase()}.`); } catch (error) { message.error(error.message); }
+        try { await request(`/web/project/lessons-learned/${lesson.id}/review`, 'PATCH', { status, review_comments }); refresh(`Lesson ${status.toLowerCase()}.`); } catch (error) { message.error(error.message); }
     };
     const submitForReview = async (lesson) => {
-        try { await request(`/lessons-learned/${lesson.id}/submit`); refresh('Lesson submitted to Supervisor.'); } catch (error) { message.error(error.message); }
+        try { await request(`/web/project/lessons-learned/${lesson.id}/submit`); refresh('Lesson submitted to Supervisor.'); } catch (error) { message.error(error.message); }
     };
     const canLesson = perms.can_lesson ?? role === 'analyst';
     const canReviewLesson = perms.can_review_lesson ?? role === 'supervisor';
