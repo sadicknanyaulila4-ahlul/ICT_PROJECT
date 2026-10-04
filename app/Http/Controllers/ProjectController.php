@@ -39,7 +39,23 @@ class ProjectController extends Controller
     /** Display the project dashboard. */
     public function index(Request $request)
     {
+        $user = $request->user();
         $query = Project::with(['supervisor', 'analyst', 'activities', 'requirements', 'documents']);
+
+        if ($user->role === 'supervisor') {
+            // Supervisor: only projects they registered/oversee
+            $query->where('supervisor_id', $user->id);
+        } elseif ($user->role === 'analyst') {
+            // Analyst: only projects assigned to them
+            $query->where('assigned_analyst_id', $user->id);
+        } elseif ($user->role === 'manager') {
+            // Manager: projects awaiting their attestation
+            $query->where('manager_attested', false);
+        } elseif ($user->role === 'dict') {
+            // DICT: projects Manager already attested, awaiting final sign-off
+            $query->where('manager_attested', true)->where('dict_attested', false);
+        }
+        // Admin: no restriction — full visibility across all projects.
 
         if ($request->has('status')) {
             $query->where('status', $request->status);
@@ -60,7 +76,7 @@ class ProjectController extends Controller
             return response()->json($projects);
         }
 
-        $archivedProjects = $request->user()?->role === 'supervisor'
+        $archivedProjects = $user->role === 'supervisor'
             ? Project::onlyTrashed()
                 ->with('deletedByUser:id,name')
                 ->latest('deleted_at')

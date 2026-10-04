@@ -67,14 +67,14 @@ function DeleteProjectAction({ project }) {
     );
 }
 
-export default function Dashboard({ projects, archivedProjects }) {
+export default function Dashboard({ projects, archivedProjects, metrics: stats }) {
     const role = usePage().props.auth?.user?.role;
     const rows = projects?.data || [];
     const metrics = [
-        { label: 'Pending Registrations', value: rows.filter((p) => p.status === 'Not Started').length, icon: <ClockCircleOutlined />, tone: 'gold' },
-        { label: 'Plans To Review', value: rows.filter((p) => p.phase === 'Planning').length, icon: <FileTextOutlined />, tone: 'red' },
-        { label: 'RTM Approvals Pending', value: rows.filter((p) => p.phase === 'Execution' && !p.is_approved).length, icon: <CheckCircleOutlined />, tone: 'red' },
-        { label: 'Ready To Close', value: rows.filter((p) => p.phase === 'Closure').length, icon: <CloseCircleOutlined />, tone: 'red' },
+        { label: 'Pending Registrations', value: stats?.pendingRegistrations ?? 0, icon: <ClockCircleOutlined />, tone: 'gold' },
+        { label: 'Plans To Review', value: stats?.plansToReview ?? 0, icon: <FileTextOutlined />, tone: 'red' },
+        { label: 'RTM Approvals Pending', value: stats?.rtmApprovalsPending ?? 0, icon: <CheckCircleOutlined />, tone: 'red' },
+        { label: 'Ready To Close', value: stats?.readyToClose ?? 0, icon: <CloseCircleOutlined />, tone: 'red' },
     ];
     const columns = [
         { title: 'SNo', render: (_, __, index) => index + 1, width: 70 },
