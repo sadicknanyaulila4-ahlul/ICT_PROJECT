@@ -57,6 +57,9 @@ class ProjectController extends Controller
         }
         // Admin: no restriction — full visibility across all projects.
 
+        // Capture the role-scoped query (before optional filters) for accurate, full-dataset metric counts.
+        $scopedQuery = clone $query;
+
         if ($request->has('status')) {
             $query->where('status', $request->status);
         }
@@ -83,7 +86,14 @@ class ProjectController extends Controller
                 ->paginate(10, ['id', 'name', 'project_source', 'deleted_at', 'deleted_by', 'deletion_reason'])
             : null;
 
-        return Inertia::render('Dashboard', compact('projects', 'archivedProjects'));
+        $metrics = [
+            'pendingRegistrations' => (clone $scopedQuery)->where('status', 'Not Started')->count(),
+            'plansToReview' => (clone $scopedQuery)->where('phase', 'Planning')->count(),
+            'rtmApprovalsPending' => (clone $scopedQuery)->where('phase', 'Execution')->where('is_approved', false)->count(),
+            'readyToClose' => (clone $scopedQuery)->where('phase', 'Closure')->count(),
+        ];
+
+        return Inertia::render('Dashboard', compact('projects', 'archivedProjects', 'metrics'));
     }
 
     /** Show the project creation form. */
