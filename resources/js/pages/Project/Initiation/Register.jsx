@@ -5,7 +5,7 @@ import PortalLayout from '@/Layouts/PortalLayout';
 
 const { Option } = Select;
 
-export default function Register({ systems = [], infrastructure = [] }) {
+export default function Register({ systems = [], infrastructure = [], entryPoint = 'manual' }) {
     const systemNameInput = useRef(null);
     const availableSystems = Array.isArray(systems)
         ? systems.filter(system => system && system.id != null && typeof system.name === 'string')
@@ -73,7 +73,7 @@ export default function Register({ systems = [], infrastructure = [] }) {
     };
 
     return (
-        <PortalLayout activeKey="initiation">
+        <PortalLayout activeKey={entryPoint === 'activity-module' ? 'activityModule' : 'initiation'}>
             <Card title="Register New Project">
                 <Form layout="vertical" onFinish={handleSubmit}>
                     <Form.Item label="Project Name" required {...fieldError('name')}>

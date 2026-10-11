@@ -20,7 +20,7 @@ export default function PortalLayout({ children, activeKey = 'dashboard' }) {
     const role = user?.role;
     const initials = user?.name?.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase() || 'US';
     const photoUrl = user?.profile_photo_url || null;
-    const allowed = { dashboard: ['admin', 'analyst', 'supervisor', 'manager', 'dict'], support: ['admin', 'analyst', 'supervisor', 'manager', 'dict'], initiation: ['analyst', 'supervisor'], planning: ['analyst', 'supervisor'], execution: ['analyst', 'supervisor'], closure: ['supervisor', 'manager', 'dict'], documents: ['supervisor', 'manager', 'dict'], notifications: ['admin', 'analyst', 'supervisor', 'manager', 'dict'], reports: ['supervisor', 'manager', 'dict'], users: ['admin'] };
+    const allowed = { dashboard: ['admin', 'analyst', 'supervisor', 'manager', 'dict'], support: ['admin', 'analyst', 'supervisor', 'manager', 'dict'], initiation: ['analyst', 'supervisor'], activityModule: ['analyst', 'supervisor'], planning: ['analyst', 'supervisor'], execution: ['analyst', 'supervisor'], closure: ['supervisor', 'manager', 'dict'], documents: ['supervisor', 'manager', 'dict'], notifications: ['admin', 'analyst', 'supervisor', 'manager', 'dict'], reports: ['supervisor', 'manager', 'dict'], users: ['admin'] };
     useEffect(() => {
         document.documentElement.dataset.theme = theme;
         try {
@@ -56,6 +56,7 @@ export default function PortalLayout({ children, activeKey = 'dashboard' }) {
         { key: 'dashboard', href: '/dashboard', label: 'Dashboard' },
         { key: 'support', href: '/support', label: 'Support Desk' },
         { key: 'initiation', href: '/project/register', label: 'Initiate Registration' },
+        { key: 'activityModule', href: '/activity-module', label: 'Activity Module' },
         { key: 'planning', href: '/dashboard?phase=Planning', label: 'Prepare Plan' },
         { key: 'execution', href: '/dashboard?phase=Execution', label: 'Prepare RTM' },
         { key: 'notifications', href: '/notifications', label: 'Notifications' },
@@ -87,7 +88,7 @@ export default function PortalLayout({ children, activeKey = 'dashboard' }) {
         </Header>
         <Content className="ict-content">
             <div className="content-toolbar">
-                <div className="breadcrumb"><Link href="/dashboard" className="breadcrumb-link breadcrumb-home" title="Home">Home</Link><span className="breadcrumb-sep">›</span><Link href="/dashboard" className="breadcrumb-link"><strong>Project Management</strong></Link><span className="breadcrumb-sep">›</span><span className="breadcrumb-current">{activeKey === 'dashboard' ? 'Dashboard' : activeKey === 'support' ? 'Support Desk' : activeKey === 'users' ? 'User Management' : activeKey}</span></div>
+                <div className="breadcrumb"><Link href="/dashboard" className="breadcrumb-link breadcrumb-home" title="Home">Home</Link><span className="breadcrumb-sep">›</span><Link href="/dashboard" className="breadcrumb-link"><strong>Project Management</strong></Link><span className="breadcrumb-sep">›</span><span className="breadcrumb-current">{activeKey === 'dashboard' ? 'Dashboard' : activeKey === 'support' ? 'Support Desk' : activeKey === 'users' ? 'User Management' : activeKey === 'activityModule' ? 'Activity Module' : 'Project Management'}</span></div>
             </div>
             {children}
         </Content>

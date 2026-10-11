@@ -80,6 +80,7 @@ Route::get('/project-pages/closure', fn () => Inertia::render('Project/Modules',
 // Project Initiation
 Route::middleware(['auth', 'role:analyst,supervisor'])->group(function () {
 	Route::get('/project/register', [ProjectController::class, 'create'])->name('project.create');
+	Route::get('/activity-module', [ProjectController::class, 'activityModule'])->name('activity.module');
 	Route::post('/project', [ProjectController::class, 'store'])->name('project.store');
 	Route::post('/project/{project}/lessons-learned', [LessonsLearnedController::class, 'storeForProject'])
 		->middleware('role:analyst')
@@ -103,7 +104,9 @@ Route::middleware(['auth', 'role:analyst,supervisor'])->group(function () {
 	Route::post('/projects/{project}/requirements', [RequirementComponentController::class, 'storeForProject'])->middleware('role:analyst')->name('project.requirements.store');
 	Route::post('/requirements/{requirementComponent}/update', [RequirementComponentController::class, 'update'])->middleware('role:analyst')->name('project.requirements.update');
 	Route::patch('/requirements/{requirementComponent}/review', [RequirementComponentController::class, 'review'])->middleware('role:supervisor')->name('project.requirements.review');
-});
+	
+
+	});
 Route::middleware(['auth', 'role:admin'])->group(function () {
 	Route::post('/project/{project}/assign-supervisor', [ProjectController::class, 'assignSupervisor'])->name('project.assign.supervisor');
 	Route::post('/admin/projects/{project}/assign-supervisor', [AdminUserController::class, 'assignSupervisor'])->name('admin.project.assign.supervisor');

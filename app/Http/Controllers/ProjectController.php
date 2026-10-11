@@ -105,6 +105,18 @@ class ProjectController extends Controller
         ]);
     }
 
+    public function activityModule()
+    {
+
+    return Inertia::render('Project/Initiation/Register', [
+        'systems' => System::where('is_active', true)->get(),
+        'infrastructure' => InfrastructureComponent::where('is_active', true)->get(),
+        'entryPoint' => 'activity-module',
+    ]);
+    
+    }
+
+
     public function workflow(Project $project)
     {
         $project->load([
