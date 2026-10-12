@@ -54,7 +54,8 @@ function refresh(success) {
 }
 
 function DocumentPanel({ project, phase, role, perms = {} }) {
-    const phaseDocuments = documentsByPhase[phase] || [];
+    // Use the backend's budget-aware list (Concept Note vs Project Proposal); static list is only a fallback.
+    const phaseDocuments = project.required_documents?.[phase] || documentsByPhase[phase] || [];
     const [type, setType] = useState(phaseDocuments[0]);
     const documents = project.documents || [];
     const canReview = perms.can_review_documents ?? role === 'supervisor';

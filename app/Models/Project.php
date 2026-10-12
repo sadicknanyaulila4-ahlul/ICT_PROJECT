@@ -84,9 +84,35 @@ class Project extends Model
         return round(((($ongoing * 50) + ($completed * 100)) / ($total * 100)) * 100, 2);
     }
 
+    /**
+     * BRD rule: "Validation based on cost for below 50 million system should produce
+     * project concept note, above 50 million system should produce project proposal."
+     */
+    public const BUDGET_THRESHOLD = 50_000_000;
+
+    /**
+     * Single source of truth for the documents required in a given phase.
+     * For Initiation, the budget decides between Concept Note and Project Proposal.
+     * A project with no budget recorded is treated as below the threshold.
+     */
+    public function requiredDocumentsForPhase(string $phase): array
+    {
+        $documents = config("project.required_documents.{$phase}", []);
+
+        if ($phase === 'Initiation') {
+            $budgetDocument = ($this->budget !== null && (float) $this->budget >= self::BUDGET_THRESHOLD)
+                ? 'Project Proposal'
+                : 'Approved Concept Note';
+
+            array_unshift($documents, $budgetDocument);
+        }
+
+        return $documents;
+    }
+
     // Check if all initiation documents are uploaded
     public function allInitiationDocumentsComplete() {
-        $requiredDocs = ['Approved Concept Note', 'e-Government Authority Letter'];
+        $requiredDocs = $this->requiredDocumentsForPhase('Initiation');
         foreach ($requiredDocs as $doc) {
             if (!$this->documents()->where('phase', 'Initiation')->where('document_type', $doc)->where('status', 'Approved')->exists()) {
                 return false;

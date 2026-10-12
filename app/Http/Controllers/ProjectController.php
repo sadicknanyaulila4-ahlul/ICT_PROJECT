@@ -20,9 +20,12 @@ use Inertia\Inertia;
 
 class ProjectController extends Controller
 {
-    private function requiredDocuments(string $phase): array
+    private function requiredDocuments(string $phase, ?Project $project = null): array
     {
-        return config("project.required_documents.{$phase}", []);
+        // Budget-dependent rules live in Project::requiredDocumentsForPhase().
+        return $project
+            ? $project->requiredDocumentsForPhase($phase)
+            : config("project.required_documents.{$phase}", []);
     }
 
     private function missingDocuments(Project $project, string $phase): array
@@ -33,7 +36,7 @@ class ProjectController extends Controller
             ->pluck('document_type')
             ->all();
 
-        return array_values(array_diff($this->requiredDocuments($phase), $approved));
+        return array_values(array_diff($this->requiredDocuments($phase, $project), $approved));
     }
 
     /** Display the project dashboard. */
@@ -137,6 +140,10 @@ class ProjectController extends Controller
         $data['requirementsTracker'] = $project->requirementsTracker;
         $data['overall_implementation'] = $project->getOverallImplementationPercentage();
         $data['missing_documents'] = $this->missingDocuments($project, $project->phase);
+        // Budget-aware required documents for every phase, so the UI never hardcodes them.
+        $data['required_documents'] = collect(['Initiation', 'Planning', 'Execution', 'Closure'])
+            ->mapWithKeys(fn (string $phase) => [$phase => $project->requiredDocumentsForPhase($phase)])
+            ->all();
 
         // Role-based visibility flags consumed by the frontend.
         $isAssignedSupervisor = $project->supervisor_id === Auth::id();
@@ -227,7 +234,7 @@ class ProjectController extends Controller
             'project_id' => $project->id,
             'phase' => $project->phase,
             'documents' => $documents,
-            'required_document_types' => $this->requiredDocuments($project->phase),
+            'required_document_types' => $this->requiredDocuments($project->phase, $project),
             'missing_documents' => $missingDocuments,
         ]);
     }
@@ -239,7 +246,7 @@ class ProjectController extends Controller
     {
         $phase = $request->input('phase');
         $validated = $request->validate([
-            'document_type' => ['required', Rule::in($this->requiredDocuments(is_string($phase) ? $phase : ''))],
+            'document_type' => ['required', Rule::in($this->requiredDocuments(is_string($phase) ? $phase : '', $project))],
             'file' => 'required|file|mimes:pdf,doc,docx,xls,xlsx,csv,txt,rtf,odt,ods,ppt,pptx,jpg,jpeg,png,zip|max:10240',
             'phase' => 'required|in:Initiation,Planning,Execution,Closure',
         ]);

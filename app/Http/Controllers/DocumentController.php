@@ -14,9 +14,12 @@ use Inertia\Inertia;
 
 class DocumentController extends Controller
 {
-    private function requiredDocuments(string $phase): array
+    private function requiredDocuments(string $phase, ?Project $project = null): array
     {
-        return config("project.required_documents.{$phase}", []);
+        // Budget-dependent rules live in Project::requiredDocumentsForPhase().
+        return $project
+            ? $project->requiredDocumentsForPhase($phase)
+            : config("project.required_documents.{$phase}", []);
     }
 
     public function library(Request $request)
@@ -30,7 +33,7 @@ class DocumentController extends Controller
             ? Project::query()->findOrFail($validated['project_id'])
             : null;
         $requiredDocuments = $selectedProject
-            ? config("project.required_documents.{$selectedProject->phase}", [])
+            ? $selectedProject->requiredDocumentsForPhase($selectedProject->phase)
             : [];
         $documentStatus = [];
 
@@ -123,9 +126,12 @@ class DocumentController extends Controller
     public function store(Request $request)
     {
         $phase = $request->input('phase');
+        // Resolve the project first: allowed Initiation document types depend on its budget.
+        // If the id is missing/invalid, validation below reports it.
+        $projectForRules = Project::find($request->input('project_id'));
         $validated = $request->validate([
             'project_id' => 'required|exists:projects,id',
-            'document_type' => ['required', Rule::in($this->requiredDocuments(is_string($phase) ? $phase : ''))],
+            'document_type' => ['required', Rule::in($this->requiredDocuments(is_string($phase) ? $phase : '', $projectForRules))],
             'phase' => 'required|in:Initiation,Planning,Execution,Closure',
             'file' => 'required|file|mimes:pdf,doc,docx,xls,xlsx,csv,txt,rtf,odt,ods,ppt,pptx,jpg,jpeg,png,zip|max:10240',
             'is_required' => 'sometimes|boolean',
