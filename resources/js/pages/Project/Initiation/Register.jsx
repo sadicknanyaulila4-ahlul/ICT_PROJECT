@@ -1,9 +1,22 @@
-import { Alert, Button, Card, Form, Input, Select, Space, message } from 'antd';
+import { Alert, Button, Card, Form, Input, Select, Space, Typography, message } from 'antd';
 import { useForm } from '@inertiajs/react';
 import { useRef } from 'react';
 import PortalLayout from '@/Layouts/PortalLayout';
 
 const { Option } = Select;
+
+function formatBudgetInput(value) {
+    if (!value) return '';
+    const [whole, fraction] = value.split('.');
+    const groupedWhole = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return fraction === undefined ? groupedWhole : `${groupedWhole}.${fraction}`;
+}
+
+function normalizeBudgetInput(value) {
+    const [whole = '', ...fractionParts] = value.replace(/,/g, '').replace(/[^\d.]/g, '').split('.');
+    const fraction = fractionParts.join('').slice(0, 2);
+    return fractionParts.length ? `${whole}.${fraction}` : whole;
+}
 
 export default function Register({ systems = [], infrastructure = [] }) {
     const systemNameInput = useRef(null);
@@ -74,7 +87,13 @@ export default function Register({ systems = [], infrastructure = [] }) {
 
     return (
         <PortalLayout activeKey="initiation">
-            <Card title="Register New Project">
+            <div className="page-heading">
+                <div>
+                    <Typography.Text className="eyebrow">PROJECT INITIATION</Typography.Text>
+                    <Typography.Title level={1}>Register New Project</Typography.Title>
+                </div>
+            </div>
+            <Card>
                 <Form layout="vertical" onFinish={handleSubmit}>
                     <Form.Item label="Project Name" required {...fieldError('name')}>
                         <Input value={data.name} onChange={e => setData('name', e.target.value)} />
@@ -82,8 +101,14 @@ export default function Register({ systems = [], infrastructure = [] }) {
                     <Form.Item label="Description">
                         <Input.TextArea value={data.description} onChange={e => setData('description', e.target.value)} />
                     </Form.Item>
-                    <Form.Item label="Budget" {...fieldError('budget')}>
-                        <Input type="number" value={data.budget} onChange={e => setData('budget', e.target.value)} />
+                    <Form.Item label="Budget (TSh)" {...fieldError('budget')}>
+                        <Input
+                            inputMode="decimal"
+                            prefix="TSh"
+                            value={formatBudgetInput(data.budget)}
+                            onChange={e => setData('budget', normalizeBudgetInput(e.target.value))}
+                            placeholder="0"
+                        />
                     </Form.Item>
                     <Form.Item label="Implementation Team" required>
                         <Select value={data.implementation_team_type} onChange={val => setData('implementation_team_type', val)}>

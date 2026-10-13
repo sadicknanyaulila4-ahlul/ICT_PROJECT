@@ -20,7 +20,7 @@ export default function PortalLayout({ children, activeKey = 'dashboard' }) {
     const role = user?.role;
     const initials = user?.name?.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase() || 'US';
     const photoUrl = user?.profile_photo_url || null;
-    const allowed = { dashboard: ['admin', 'analyst', 'supervisor', 'manager', 'dict'], support: ['admin', 'analyst', 'supervisor', 'manager', 'dict'], initiation: ['analyst', 'supervisor'], planning: ['analyst', 'supervisor'], execution: ['analyst', 'supervisor'], closure: ['supervisor', 'manager', 'dict'], documents: ['supervisor', 'manager', 'dict'], notifications: ['admin', 'analyst', 'supervisor', 'manager', 'dict'], reports: ['supervisor', 'manager', 'dict'], users: ['admin'] };
+    const allowed = { dashboard: ['admin', 'analyst', 'supervisor', 'manager', 'dict'], support: ['admin', 'analyst', 'supervisor', 'manager', 'dict'], initiation: ['supervisor'], planning: ['analyst', 'supervisor'], closure: ['supervisor', 'manager', 'dict'], documents: ['supervisor', 'manager', 'dict'], notifications: ['admin', 'analyst', 'supervisor', 'manager', 'dict'], reports: ['supervisor', 'manager', 'dict'], users: ['admin'] };
     useEffect(() => {
         document.documentElement.dataset.theme = theme;
         try {
@@ -57,7 +57,6 @@ export default function PortalLayout({ children, activeKey = 'dashboard' }) {
         { key: 'support', href: '/support', label: 'Support Desk' },
         { key: 'initiation', href: '/project/register', label: 'Initiate Registration' },
         { key: 'planning', href: '/dashboard?phase=Planning', label: 'Prepare Plan' },
-        { key: 'execution', href: '/dashboard?phase=Execution', label: 'Prepare RTM' },
         { key: 'notifications', href: '/notifications', label: 'Notifications' },
         { key: 'documents', href: '/project-pages/documents', label: 'Documents' },
         { key: 'closure', href: '/dashboard?phase=Closure', label: 'Close Project' },

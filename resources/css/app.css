@@ -1338,3 +1338,150 @@ body { background: #f4f6f8; color: var(--portal-ink); }
         gap: 14px;
     }
 }
+
+.ict-content h1.ant-typography {
+    margin-top: 0 !important;
+    font-size: 30px !important;
+    line-height: 1.3;
+}
+
+.ict-content .users-page .page-title h2.ant-typography {
+    margin-top: 0 !important;
+    font-size: 30px !important;
+    line-height: 1.3;
+}
+
+:root[data-theme='dark'] .ict-layout,
+:root[data-theme='dark'] .ict-content {
+    background: var(--ict-bg);
+    color: var(--ict-text);
+}
+
+:root[data-theme='dark'] .ict-subbar {
+    border-bottom: 1px solid var(--ict-border);
+    background: var(--ict-surface);
+    color: var(--ict-text);
+}
+
+:root[data-theme='dark'] .ict-nav-link {
+    color: var(--ict-text);
+}
+
+:root[data-theme='dark'] .ict-nav-link:hover,
+:root[data-theme='dark'] .ict-nav-link.active {
+    background: var(--ict-surface-raised);
+    color: #ffd166;
+}
+
+:root[data-theme='dark'] .breadcrumb {
+    border-color: var(--ict-border);
+    background: var(--ict-surface);
+    color: var(--ict-muted);
+}
+
+:root[data-theme='dark'] .breadcrumb strong,
+:root[data-theme='dark'] .breadcrumb-current,
+:root[data-theme='dark'] .breadcrumb-link strong,
+:root[data-theme='dark'] .dashboard-table .ant-card-head-title,
+:root[data-theme='dark'] .user-table .ant-card-head-title,
+:root[data-theme='dark'] .admin-callout a,
+:root[data-theme='dark'] .page-heading .eyebrow {
+    color: #ffd166 !important;
+}
+
+:root[data-theme='dark'] .ant-card,
+:root[data-theme='dark'] .ant-card .ant-card-body,
+:root[data-theme='dark'] .ant-card-head {
+    border-color: var(--ict-border);
+    background: var(--ict-surface);
+    color: var(--ict-text);
+}
+
+:root[data-theme='dark'] .ant-card-head-title,
+:root[data-theme='dark'] .ant-typography:not(.ant-typography-secondary),
+:root[data-theme='dark'] .ant-form-item-label > label,
+:root[data-theme='dark'] .ant-table-cell,
+:root[data-theme='dark'] .profile-trigger {
+    color: var(--ict-text);
+}
+
+:root[data-theme='dark'] .ict-content h1.ant-typography {
+    color: var(--ict-text) !important;
+}
+
+:root[data-theme='dark'] .ict-content .users-page .page-title h2.ant-typography {
+    color: var(--ict-text) !important;
+}
+
+:root[data-theme='dark'] .ant-table,
+:root[data-theme='dark'] .ant-table-container,
+:root[data-theme='dark'] .ant-table-thead > tr > th,
+:root[data-theme='dark'] .ant-table-tbody > tr > td {
+    border-color: var(--ict-border);
+    background: var(--ict-surface);
+    color: var(--ict-text);
+}
+
+:root[data-theme='dark'] .ant-table-thead > tr > th {
+    background: var(--ict-surface-raised);
+    color: #ffd166;
+}
+
+:root[data-theme='dark'] .ant-table-tbody > tr:hover > td {
+    background: var(--ict-surface-raised) !important;
+}
+
+:root[data-theme='dark'] .ant-input,
+:root[data-theme='dark'] .ant-input-affix-wrapper,
+:root[data-theme='dark'] .ant-select-selector,
+:root[data-theme='dark'] .ant-picker,
+:root[data-theme='dark'] .ant-input-number,
+:root[data-theme='dark'] .ant-input-number-input {
+    border-color: var(--ict-border) !important;
+    background: var(--ict-surface-raised) !important;
+    color: var(--ict-text) !important;
+}
+
+:root[data-theme='dark'] .ant-input::placeholder,
+:root[data-theme='dark'] .ant-select-selection-placeholder {
+    color: var(--ict-muted);
+}
+
+:root[data-theme='dark'] .ant-dropdown .ant-dropdown-menu,
+:root[data-theme='dark'] .ant-modal .ant-modal-content,
+:root[data-theme='dark'] .ant-modal .ant-modal-header {
+    border-color: var(--ict-border);
+    background: var(--ict-surface);
+    color: var(--ict-text);
+}
+
+:root[data-theme='dark'] .ant-modal .ant-modal-title,
+:root[data-theme='dark'] .ant-dropdown .ant-dropdown-menu-item {
+    color: var(--ict-text);
+}
+
+:root[data-theme='dark'] .ant-alert {
+    border-color: var(--ict-border);
+    background: var(--ict-surface-raised);
+    color: var(--ict-text);
+}
+
+:root[data-theme='dark'] .project-link,
+:root[data-theme='dark'] .admin-callout a {
+    color: #ffd166;
+}
+
+:root[data-theme='dark'] .metric-card .ant-typography,
+:root[data-theme='dark'] .ant-typography-secondary,
+:root[data-theme='dark'] .table-caption {
+    color: var(--ict-muted) !important;
+}
+
+:root[data-theme='dark'] .table-caption {
+    background: var(--ict-surface-raised);
+}
+
+:root[data-theme='dark'] .admin-callout {
+    border-color: var(--ict-border);
+    background: var(--ict-surface);
+}

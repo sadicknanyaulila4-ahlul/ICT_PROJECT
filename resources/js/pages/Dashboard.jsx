@@ -82,11 +82,14 @@ export default function Dashboard({ projects, archivedProjects }) {
         { title: 'Category', dataIndex: 'project_source', render: (value) => <Tag color="default" style={{ color: '#000' }}>{value || 'System'}</Tag> },
         { title: 'Phase', dataIndex: 'phase' },
         { title: 'Status', dataIndex: 'status', render: (value) => <Tag color={value === 'Completed' ? 'green' : 'gold'}>{value || 'Not Started'}</Tag> },
-        ...(role === 'supervisor' ? [{
+        {
             title: 'Actions',
             key: 'actions',
-            render: (_, project) => project.phase === 'Initiation' ? <DeleteProjectAction project={project} /> : '—',
-        }] : []),
+            render: (_, project) => <Space>
+                <Button type="primary" size="small" href={`/projects/${project.id}/workflow`}>Open Project</Button>
+                {role === 'supervisor' && project.phase === 'Initiation' && <DeleteProjectAction project={project} />}
+            </Space>,
+        },
     ];
     const archivedColumns = [
         { title: 'Project', dataIndex: 'name' },
@@ -94,6 +97,6 @@ export default function Dashboard({ projects, archivedProjects }) {
         { title: 'Reason', dataIndex: 'deletion_reason' },
         { title: 'Archived at', dataIndex: 'deleted_at', render: (date) => date ? new Date(date).toLocaleString() : '—' },
     ];
-    const canRegister = ['analyst', 'supervisor'].includes(role);
-    return <PortalLayout activeKey="dashboard"><section className="dashboard-page"><Row gutter={[20, 20]}>{metrics.map((metric) => <Col xs={24} sm={12} xl={6} key={metric.label}><Card className={`metric-card metric-card-${metric.tone}`}><div><Typography.Text>{metric.label}</Typography.Text><strong>{metric.value}</strong></div><span className={`metric-icon ${metric.tone}`}>{metric.icon}</span></Card></Col>)}</Row><Card className="dashboard-table" title="Project Overview" extra={<Space>{canRegister && <Link href="/project/register" className="ant-btn ant-btn-primary">Register project</Link>}<span className="table-caption">{projects?.total || 0} total projects</span></Space>}><Table dataSource={rows} columns={columns} rowKey="id" pagination={{ pageSize: 8 }} scroll={{ x: 720 }} locale={{ emptyText: 'No project records found.' }} /></Card>{role === 'supervisor' && <Card className="dashboard-table archive-audit-table" title="Archived Project Audit History" extra={<span className="table-caption">{archivedProjects?.total || 0} archived</span>}><Table dataSource={archivedProjects?.data || []} columns={archivedColumns} rowKey="id" pagination={false} scroll={{ x: 760 }} locale={{ emptyText: 'No archived projects.' }} /></Card>}{role === 'admin' && <Card className="admin-callout"><div><Typography.Title level={4}>User access administration</Typography.Title><Typography.Text type="secondary">Create accounts and assign roles for every system user.</Typography.Text></div><Link href="/admin/users">Manage users →</Link></Card>}</section></PortalLayout>;
+    const canRegister = role === 'supervisor';
+    return <PortalLayout activeKey="dashboard"><section className="dashboard-page"><div className="page-heading"><div><Typography.Text className="eyebrow">PROJECT MANAGEMENT</Typography.Text><Typography.Title level={1}>Dashboard</Typography.Title></div></div><Row gutter={[20, 20]}>{metrics.map((metric) => <Col xs={24} sm={12} xl={6} key={metric.label}><Card className={`metric-card metric-card-${metric.tone}`}><div><Typography.Text>{metric.label}</Typography.Text><strong>{metric.value}</strong></div><span className={`metric-icon ${metric.tone}`}>{metric.icon}</span></Card></Col>)}</Row><Card className="dashboard-table" title="Project Overview" extra={<Space>{canRegister && <Link href="/project/register" className="ant-btn ant-btn-primary">Register project</Link>}<span className="table-caption">{projects?.total || 0} total projects</span></Space>}><Table dataSource={rows} columns={columns} rowKey="id" pagination={{ pageSize: 8 }} scroll={{ x: 720 }} locale={{ emptyText: 'No project records found.' }} /></Card>{role === 'supervisor' && <Card className="dashboard-table archive-audit-table" title="Archived Project Audit History" extra={<span className="table-caption">{archivedProjects?.total || 0} archived</span>}><Table dataSource={archivedProjects?.data || []} columns={archivedColumns} rowKey="id" pagination={false} scroll={{ x: 760 }} locale={{ emptyText: 'No archived projects.' }} /></Card>}{role === 'admin' && <Card className="admin-callout"><div><Typography.Title level={4}>User access administration</Typography.Title><Typography.Text type="secondary">Create accounts and assign roles for every system user.</Typography.Text></div><Link href="/admin/users">Manage users →</Link></Card>}</section></PortalLayout>;
 }

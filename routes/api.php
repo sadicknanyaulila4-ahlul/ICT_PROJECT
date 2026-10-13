@@ -22,7 +22,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('/projects')->group(function () {
         // Project CRUD
         Route::get('/', [ProjectController::class, 'index'])->name('projects.index');
-        Route::post('/', [ProjectController::class, 'store'])->middleware('role:analyst,supervisor')->name('projects.store');
+        Route::post('/', [ProjectController::class, 'store'])->middleware('role:supervisor')->name('projects.store');
         Route::get('/{project}', [ProjectController::class, 'show'])->name('projects.show');
         Route::patch('/{project}', [ProjectController::class, 'update'])->middleware('role:analyst,supervisor')->name('projects.update');
         Route::delete('/{project}', [ProjectController::class, 'destroy'])->middleware('role:supervisor')->name('projects.destroy');
@@ -102,7 +102,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/requirements/{requirementComponent}', [RequirementComponentController::class, 'destroy'])->middleware('role:analyst')->name('requirements.destroy');
 
     // Custom Document Operations
-    Route::patch('/documents/{document}/review', [DocumentController::class, 'review'])->middleware('role:supervisor')->name('documents.review');
+    Route::patch('/documents/{document}/review', [DocumentController::class, 'review'])->middleware('role:supervisor,manager')->name('documents.review');
     Route::get('/documents/{document}/download', [DocumentController::class, 'download'])->name('documents.download');
 
     // Custom Change Request Operations

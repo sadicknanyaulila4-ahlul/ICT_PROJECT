@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Project;
 use App\Models\ProjectActivity;
+use App\Support\ProjectWorkflowAdvancer;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
@@ -166,6 +167,7 @@ class ProjectActivityController extends Controller
 
         $activity->update($validated);
         $activity->updateStatusFromDates();
+        ProjectWorkflowAdvancer::advanceIfReady($activity->project);
 
         return response()->json([
             'message' => 'Activity progress recorded successfully',

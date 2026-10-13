@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { router, usePage } from '@inertiajs/react';
 import { Alert, Button, Card, Col, DatePicker, Form, Input, Modal, Row, Select, Space, Steps, Table, Tag, Typography, Upload, message } from 'antd';
-import { CheckCircleOutlined, CloudUploadOutlined, DownloadOutlined, PlusOutlined, SendOutlined } from '@ant-design/icons';
+import { CloudUploadOutlined, DownloadOutlined, PlusOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import PortalLayout from '@/Layouts/PortalLayout';
 
@@ -57,7 +57,9 @@ function DocumentPanel({ project, phase, role, perms = {} }) {
     const phaseDocuments = documentsByPhase[phase] || [];
     const [type, setType] = useState(phaseDocuments[0]);
     const documents = project.documents || [];
-    const canReview = perms.can_review_documents ?? role === 'supervisor';
+    const canReview = phase === 'Initiation'
+        ? (perms.can_review_initiation_documents ?? role === 'manager')
+        : (perms.can_review_documents ?? role === 'supervisor');
     const analystUploadPhase = ['Planning', 'Execution', 'Closure'].includes(phase);
     const canUpload = analystUploadPhase
         ? (perms.can_plan ?? role === 'analyst')
@@ -99,7 +101,7 @@ function DocumentPanel({ project, phase, role, perms = {} }) {
             { title: 'File', dataIndex: 'original_filename' },
             { title: 'Download', render: (_, document) => <Button size="small" href={`/project/documents/${document.id}/download`}>Download</Button> },
             { title: 'Status', dataIndex: 'status', render: (value) => <Tag color={statusColor[value]}>{value}</Tag> },
-            { title: 'Supervisor feedback', dataIndex: 'reviewer_comments', render: (value, document) => document.status === 'Returned' && value ? <Alert type="error" showIcon message={value} /> : value || '—' },
+            { title: 'Reviewer feedback', dataIndex: 'reviewer_comments', render: (value, document) => document.status === 'Returned' && value ? <Alert type="error" showIcon message={value} /> : value || '—' },
             { title: 'Revision', dataIndex: ['replaces_document', 'original_filename'], render: (value) => value ? `Replaces ${value}` : 'Original submission' },
             ...(canReplaceReturned ? [{
                 title: 'Fix & resubmit',
@@ -235,7 +237,12 @@ function ProjectDetails({ project, canViewFinancials }) {
         { label: 'Analyst', value: project.analyst?.name || 'Not assigned' },
         { label: 'Implementation progress', value: `${project.overall_implementation ?? 0}%` },
     ];
-    if (canViewFinancials) items.push({ label: 'Budget', value: project.budget ?? '—' });
+    if (canViewFinancials) {
+        const budget = project.budget === null || project.budget === undefined || project.budget === ''
+            ? '—'
+            : `TSh ${Number(project.budget).toLocaleString('en-TZ', { maximumFractionDigits: 2 })}`;
+        items.push({ label: 'Budget', value: budget });
+    }
     return <Card className="mt-4" title="Project details"><Typography.Paragraph type="secondary">{project.description || 'No project description was provided during registration.'}</Typography.Paragraph><Row gutter={[16, 12]}>{items.map((item) => <Col xs={12} md={6} key={item.label}><Typography.Text type="secondary">{item.label}</Typography.Text><br /><strong>{item.value}</strong></Col>)}</Row></Card>;
 }
 
@@ -323,10 +330,7 @@ export default function Workflow({ project, analysts = [], supervisors = [] }) {
         }
     };
     const buttons = useMemo(() => {
-        if (phase === 'Initiation' && can('can_transition', ['supervisor'])) return <Button type="primary" icon={<SendOutlined />} onClick={() => action(`/web/project/${project.id}/transition-to-planning`, 'Project moved to Planning.')}>Move to planning</Button>;
-        if (phase === 'Planning' && can('can_transition', ['supervisor'])) return <Space><Button onClick={() => action(`/web/project/${project.id}/activities/plan/review`, 'Implementation plan approved.', { status: 'Approved' })}>Approve plan</Button><Button danger onClick={() => { const comments = window.prompt('Enter comments for the analyst:'); if (comments) action(`/web/project/${project.id}/activities/plan/review`, 'Implementation plan returned to Analyst.', { status: 'Returned', comments }); }}>Return plan</Button><Button type="primary" icon={<SendOutlined />} onClick={() => action(`/web/project/${project.id}/transition-to-execution`, 'Project moved to Execution.')}>Move to execution</Button></Space>;
-        if (phase === 'Execution' && can('can_transition', ['supervisor'])) return <Button type="primary" icon={<SendOutlined />} onClick={() => action(`/web/project/${project.id}/transition-to-closure`, 'Project moved to Closure.')}>Move to closure</Button>;
-        if (phase === 'Closure' && can('can_close', ['supervisor'])) return <Button type="primary" icon={<CheckCircleOutlined />} onClick={() => action(`/web/project/${project.id}/close`, 'Project closed successfully.')}>Close project</Button>;
+        if (phase === 'Planning' && can('can_review_plan', ['supervisor'])) return <Space><Button onClick={() => action(`/web/project/${project.id}/activities/plan/review`, 'Implementation plan approved.', { status: 'Approved' })}>Approve plan</Button><Button danger onClick={() => { const comments = window.prompt('Enter comments for the analyst:'); if (comments) action(`/web/project/${project.id}/activities/plan/review`, 'Implementation plan returned to Analyst.', { status: 'Returned', comments }); }}>Return plan</Button></Space>;
         return null;
     }, [phase, project?.id]);
 
@@ -352,6 +356,6 @@ export default function Workflow({ project, analysts = [], supervisors = [] }) {
             </>}
             {phase === 'Closure' && <Button icon={<DownloadOutlined />} href={`/project/${project.id}/lessons-learned/report/download`}>Lessons learned (JSON)</Button>}
         </Space></Card>}
-        <Alert className="mt-4" type="info" showIcon message="Every button on this page saves to the project database. Phase changes are still protected by the required document, approval, activity, and UAT checks." />
+        <Alert className="mt-4" type="info" showIcon message="Project phases advance automatically when all required documents, approvals, activities, and UAT checks for that phase are complete." />
     </PortalLayout>;
 }

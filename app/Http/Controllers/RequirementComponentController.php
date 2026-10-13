@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\RequirementComponent;
 use App\Models\Project;
+use App\Support\ProjectWorkflowAdvancer;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
@@ -69,6 +70,7 @@ class RequirementComponentController extends Controller
             'reviewed_by' => $request->user()->id,
             'reviewed_at' => now(),
         ]);
+        ProjectWorkflowAdvancer::advanceIfReady($requirementComponent->project);
 
         return response()->json(['message' => 'Requirement reviewed successfully.', 'requirement' => $requirementComponent]);
     }
@@ -118,6 +120,7 @@ class RequirementComponentController extends Controller
             }
             $requirementComponent->save();
         }
+        ProjectWorkflowAdvancer::advanceIfReady($requirementComponent->project);
 
         return response()->json([
             'message' => 'Requirement updated successfully',

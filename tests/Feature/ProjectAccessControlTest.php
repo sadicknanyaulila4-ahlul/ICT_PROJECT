@@ -3,11 +3,13 @@
 namespace Tests\Feature;
 
 use App\Models\ChangeRequest;
+use App\Models\Document;
 use App\Models\Project;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class ProjectAccessControlTest extends TestCase
@@ -59,6 +61,67 @@ class ProjectAccessControlTest extends TestCase
         $this->actingAs($assignedSupervisor)
             ->postJson("/api/projects/{$project->id}/documents", $payload)
             ->assertCreated();
+    }
+
+    public function test_only_a_manager_can_review_initiation_documents(): void
+    {
+        $supervisor = User::factory()->create(['role' => 'supervisor']);
+        $manager = User::factory()->create(['role' => 'manager']);
+        $project = $this->createProject(['supervisor_id' => $supervisor->id]);
+        $document = Document::create([
+            'project_id' => $project->id,
+            'phase' => 'Initiation',
+            'document_type' => 'Approved Concept Note',
+            'file_path' => 'documents/test/concept-note.pdf',
+            'original_filename' => 'concept-note.pdf',
+            'uploaded_by' => $supervisor->id,
+            'status' => 'Pending Review',
+            'is_required' => true,
+        ]);
+
+        $this->actingAs($manager)
+            ->get("/projects/{$project->id}/workflow")
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Project/Workflow')
+                ->where('project.permissions.can_review_initiation_documents', true)
+            );
+
+        $this->actingAs($supervisor)
+            ->patchJson("/project/documents/{$document->id}/review", ['status' => 'Approved'])
+            ->assertForbidden();
+
+        $this->actingAs($manager)
+            ->patchJson("/project/documents/{$document->id}/review", ['status' => 'Approved'])
+            ->assertOk();
+
+        $this->assertDatabaseHas('documents', [
+            'id' => $document->id,
+            'status' => 'Approved',
+            'reviewed_by' => $manager->id,
+        ]);
+    }
+
+    public function test_manager_cannot_review_documents_outside_initiation(): void
+    {
+        $manager = User::factory()->create(['role' => 'manager']);
+        $project = $this->createProject([
+            'phase' => 'Planning',
+            'supervisor_id' => $manager->id,
+        ]);
+        $document = Document::create([
+            'project_id' => $project->id,
+            'phase' => 'Planning',
+            'document_type' => 'Project Proposal',
+            'file_path' => 'documents/test/proposal.pdf',
+            'original_filename' => 'proposal.pdf',
+            'uploaded_by' => User::factory()->create(['role' => 'analyst'])->id,
+            'status' => 'Pending Review',
+            'is_required' => true,
+        ]);
+
+        $this->actingAs($manager)
+            ->patchJson("/project/documents/{$document->id}/review", ['status' => 'Approved'])
+            ->assertForbidden();
     }
 
     public function test_only_an_assigned_analyst_can_upload_documents_and_types_must_be_required(): void

@@ -11,6 +11,7 @@ use App\Models\ProjectAttestation;
 use App\Models\RequirementComponent;
 use App\Models\System;
 use App\Models\User;
+use App\Support\ProjectWorkflowAdvancer;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
@@ -110,6 +111,7 @@ class ProjectController extends Controller
                 || ($role === 'analyst' && $isAssignedAnalyst),
             'can_upload_other' => ($role === 'analyst' && $isAssignedAnalyst)
                 || ($role === 'supervisor' && $isAssignedSupervisor),
+            'can_review_initiation_documents' => $role === 'manager',
             'can_review_documents' => $role === 'supervisor' && $isAssignedSupervisor,
             'can_plan' => $role === 'analyst' && $isAssignedAnalyst,
             'can_review_plan' => $role === 'supervisor' && $isAssignedSupervisor,
@@ -373,6 +375,7 @@ class ProjectController extends Controller
             'implementation_plan_reviewed_at' => now(),
             'implementation_plan_reviewed_by' => Auth::id(),
         ]);
+        ProjectWorkflowAdvancer::advanceIfReady($project);
 
         return response()->json(['message' => 'Implementation plan reviewed.', 'project' => $project]);
     }
@@ -834,7 +837,7 @@ class ProjectController extends Controller
         $validated = $request->validate([
             'name' => 'sometimes|string|max:255',
             'description' => 'sometimes|nullable|string',
-            'budget' => 'sometimes|nullable|numeric|min:0',
+            'budget' => 'sometimes|nullable|numeric|min:0|max:9999999999999.99',
             'project_nature' => 'sometimes|in:Planned,Adhoc',
         ]);
 

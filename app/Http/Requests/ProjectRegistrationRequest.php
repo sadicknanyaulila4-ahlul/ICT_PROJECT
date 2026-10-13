@@ -11,7 +11,7 @@ class ProjectRegistrationRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->hasRole(['analyst', 'supervisor']) ?? false;
+        return $this->user()?->role === 'supervisor';
     }
 
     protected function prepareForValidation(): void
@@ -46,7 +46,7 @@ class ProjectRegistrationRequest extends FormRequest
         return [
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'budget' => 'nullable|numeric|min:0',
+            'budget' => 'nullable|numeric|min:0|max:9999999999999.99',
             'implementation_team_type' => ['required', Rule::in(['Internal', 'External'])],
             'implementation_team_names' => 'required|string|max:5000',
             'project_source' => ['required', Rule::in(['System Development', 'Infrastructure Development'])],

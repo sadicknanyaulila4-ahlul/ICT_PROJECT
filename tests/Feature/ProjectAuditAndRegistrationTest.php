@@ -41,14 +41,14 @@ class ProjectAuditAndRegistrationTest extends TestCase
 
     public function test_project_registration_rejects_an_existing_system_name_case_insensitively(): void
     {
-        $analyst = User::factory()->create(['role' => 'analyst']);
+        $supervisor = User::factory()->create(['role' => 'supervisor']);
         System::create([
             'name' => 'NSSF Portal',
             'system_type' => 'Other',
             'is_active' => true,
         ]);
 
-        $response = $this->actingAs($analyst)->postJson('/project', [
+        $response = $this->actingAs($supervisor)->postJson('/project', [
             'name' => 'New portal project',
             'implementation_team_type' => 'Internal',
             'implementation_team_names' => 'Project team',
@@ -174,11 +174,44 @@ class ProjectAuditAndRegistrationTest extends TestCase
         ]);
     }
 
-    public function test_analyst_can_open_the_project_registration_form(): void
+    public function test_analyst_cannot_open_or_submit_project_registration(): void
     {
         $analyst = User::factory()->create(['role' => 'analyst']);
 
         $this->actingAs($analyst)
+            ->get('/project/register')
+            ->assertForbidden();
+
+        $this->actingAs($analyst)
+            ->postJson('/project', [
+                'name' => 'Analyst registered project',
+                'implementation_team_type' => 'Internal',
+                'implementation_team_names' => 'Project team',
+                'project_source' => 'System Development',
+                'project_nature' => 'Planned',
+                'project_activity' => 'New Implementation (Major)',
+                'custom_system_name' => 'Analyst registered system',
+            ])
+            ->assertForbidden();
+
+        $this->actingAs($analyst)
+            ->postJson('/api/projects', [
+                'name' => 'Analyst API registered project',
+                'implementation_team_type' => 'Internal',
+                'implementation_team_names' => 'Project team',
+                'project_source' => 'System Development',
+                'project_nature' => 'Planned',
+                'project_activity' => 'New Implementation (Major)',
+                'custom_system_name' => 'Analyst API registered system',
+            ])
+            ->assertForbidden();
+    }
+
+    public function test_supervisor_can_open_project_registration_form(): void
+    {
+        $supervisor = User::factory()->create(['role' => 'supervisor']);
+
+        $this->actingAs($supervisor)
             ->get('/project/register')
             ->assertOk()
             ->assertInertia(fn ($page) => $page

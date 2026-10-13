@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Document;
 use App\Models\DocumentDownload;
 use App\Models\Project;
+use App\Support\ProjectWorkflowAdvancer;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
@@ -211,7 +212,13 @@ class DocumentController extends Controller
      */
     public function review(Request $request, Document $document)
     {
-        $this->authorizeAssignedSupervisor($document->project);
+        if ($document->phase === 'Initiation') {
+            abort_unless($request->user()?->role === 'manager', 403, 'Only a manager can review initiation documents.');
+        } else {
+            abort_unless($request->user()?->role === 'supervisor', 403, 'Only a supervisor can review documents outside Initiation.');
+            $this->authorizeAssignedSupervisor($document->project);
+        }
+
         $validated = $request->validate([
             'status' => 'required|in:Approved,Returned',
             'reviewer_comments' => 'nullable|string|required_if:status,Returned',
@@ -223,6 +230,7 @@ class DocumentController extends Controller
             'reviewed_by' => Auth::id(),
             'reviewed_at' => now(),
         ]);
+        ProjectWorkflowAdvancer::advanceIfReady($document->project);
 
         return response()->json([
             'message' => 'Document reviewed successfully',
